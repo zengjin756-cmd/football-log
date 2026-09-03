@@ -1,0 +1,17 @@
+# 截图预览素材（不入库）
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# 系统文件
+Thumbs.db
+.DS_Store
+
+# 本地补丁/临时脚本
+_patch_*.js
+_pf.js
+_fix*.js
+_ac.js
+_cdp*.js
+_newfriends.txt

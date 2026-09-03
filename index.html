@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>绿茵日志 · 足球运动记录</title>
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --pitch:#1d8a4e; --pitch-deep:#126338; --pitch-soft:#e9f6ee;
+  --ink:#14201a; --ink-2:#44524a; --mut:#8b9a90; --line:#e7ede8;
+  --bg:#f4f7f4; --card:#fff;
+  --win:#e5484d; --draw:#e8930c; --lose:#23a55a;
+  --win-soft:#fdecec; --draw-soft:#fdf3e0; --lose-soft:#e7f6ed;
+  --r:16px; --r-lg:22px; --sh:0 1px 2px rgba(20,32,26,.04),0 10px 28px rgba(20,60,40,.07);
+  --tabh:60px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body,button,input,select,textarea{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,sans-serif;}
+body{background:#d9e3da;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+
+/* 桌面说明 */
+.desk-note{position:fixed;left:28px;top:50%;transform:translateY(-50%);width:236px;color:#2b4434;}
+.desk-note h2{font-size:22px;color:#155f38;margin-bottom:10px;letter-spacing:.5px;}
+.desk-note p{font-size:13px;line-height:1.9;color:#3c5244;}
+.desk-note .pill{display:inline-block;background:#fff;border:1px solid #c5d9c9;color:#176540;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;margin-top:14px;}
+@media(max-width:1040px){.desk-note{display:none;}}
+
+/* ===== 手机外壳 ===== */
+.phone{width:400px;height:850px;background:var(--bg);border-radius:50px;position:relative;overflow:hidden;flex-shrink:0;
+  box-shadow:0 0 0 11px #0f1411,0 0 0 13px #39423c,0 34px 70px rgba(0,0,0,.4);display:flex;flex-direction:column;}
+.phone::before{content:"";position:absolute;top:9px;left:50%;transform:translateX(-50%);width:128px;height:27px;background:#0f1411;border-radius:0 0 18px 18px;z-index:80;}
+.statusbar{height:48px;display:flex;justify-content:space-between;align-items:flex-end;padding:10px 30px 4px;font-size:13px;font-weight:700;color:var(--ink);flex-shrink:0;}
+.screen{flex:1;overflow-y:auto;overflow-x:hidden;padding-bottom:calc(var(--tabh)+20px);scrollbar-width:none;}
+.screen::-webkit-scrollbar{display:none;}
+.hidden{display:none!important;}
+
+.pad{padding:18px 18px 4px;}
+.sec-t{display:flex;align-items:center;justify-content:space-between;margin:22px 18px 11px;font-size:15px;font-weight:800;color:var(--ink);}
+.sec-t .more{font-size:12.5px;color:var(--mut);font-weight:500;}
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);}
+
+.btn{border:none;border-radius:13px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .05s,opacity .12s;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
+.btn:active{transform:scale(.96);}
+.btn-p{background:var(--pitch);color:#fff;box-shadow:0 6px 16px rgba(29,138,78,.3);}
+.btn-o{background:#fff;color:var(--pitch);border:1.5px solid var(--pitch);}
+.btn-ghost{background:#eef2ef;color:var(--ink-2);}
+.btn-danger{background:var(--win-soft);color:var(--win);}
+.btn-block{width:100%;}
+.fab{position:absolute;bottom:calc(var(--tabh)+12px);right:16px;width:54px;height:54px;border-radius:17px;background:var(--pitch);color:#fff;font-size:27px;font-weight:300;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px rgba(29,138,78,.45);cursor:pointer;border:none;z-index:40;transition:transform .12s;}
+.fab:active{transform:scale(.88) rotate(90deg);}
+
+.chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:16px;font-size:11.5px;font-weight:700;white-space:nowrap;}
+.c-p{background:var(--pitch-soft);color:var(--pitch-deep);}
+.c-g{background:#eef2ef;color:var(--ink-2);}
+.c-draw{background:var(--draw-soft);color:#a86a00;}
+.c-win{background:var(--win-soft);color:var(--win);}
+.c-lose{background:var(--lose-soft);color:var(--lose);}
+
+.empty{text-align:center;padding:56px 24px;color:var(--mut);}
+.empty .ei{font-size:46px;margin-bottom:10px;opacity:.7;}
+.empty p{font-size:13.5px;line-height:1.9;}
+
+/* ===== 底部导航(5个) ===== */
+.tabbar{position:absolute;bottom:0;left:0;right:0;height:var(--tabh);background:rgba(255,255,255,.97);backdrop-filter:blur(14px);display:flex;border-top:1px solid var(--line);z-index:60;padding-bottom:2px;}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#a2aea6;cursor:pointer;font-size:10px;font-weight:700;position:relative;}
+.tab .ti{font-size:21px;line-height:1;transition:transform .15s;}
+.tab.active{color:var(--pitch);}
+.tab.active .ti{transform:translateY(-1px) scale(1.08);}
+.tab .dot{position:absolute;top:7px;left:50%;margin-left:11px;width:9px;height:9px;border-radius:50%;background:var(--win);border:2px solid #fff;display:none;}
+
+/* ===== 首页 ===== */
+.hero{padding:10px 18px 22px;background:linear-gradient(165deg,var(--bg),var(--bg));}
+.hi-row{display:flex;align-items:center;justify-content:space-between;}
+.hi{font-size:13px;color:var(--mut);}
+.hi b{color:var(--ink);font-weight:800;font-size:15px;}
+.gname{font-size:25px;font-weight:800;color:var(--ink);letter-spacing:.3px;}
+.gname i{font-style:normal;color:var(--pitch);}
+.hero-tagline{font-size:12.5px;color:var(--mut);margin-top:3px;}
+.qstats{display:flex;gap:10px;margin-top:16px;}
+.qs{flex:1;background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:12px 6px;text-align:center;}
+.qs .n{font-size:21px;font-weight:800;color:var(--ink);}
+.qs .n small{font-size:11px;color:var(--mut);font-weight:600;}
+.qs .l{font-size:10.5px;color:var(--mut);margin-top:1px;}
+
+/* 顶部渐变横幅(统计/打卡) */
+.banner{position:relative;overflow:hidden;background:linear-gradient(120deg,#178a4d,#2bb06a);border-radius:var(--r-lg);color:#fff;padding:18px;margin:14px 18px 4px;box-shadow:0 12px 28px rgba(23,138,77,.28);}
+.banner::after{content:"⚽";position:absolute;right:6px;top:-14px;font-size:88px;opacity:.12;}
+.banner .bn{font-size:16px;font-weight:800;}
+.banner .bs{font-size:12px;opacity:.92;margin-top:2px;line-height:1.5;}
+.banner .bs strong{font-size:22px;font-weight:800;}
+.banner .bact{position:relative;z-index:2;}
+
+/* 活动 */
+.act{display:flex;align-items:center;gap:12px;padding:13px 16px;cursor:pointer;transition:background .12s;}
+.act:hover{background:#f7faf7;}
+.act+.act{border-top:1px solid var(--line);}
+.ai{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.at{flex:1;min-width:0;}
+.at .t{font-size:14.5px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:7px;}
+.at .t .rs{color:var(--win);font-weight:800;}
+.at .s{font-size:12px;color:var(--mut);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ar{font-size:11.5px;color:var(--mut);flex-shrink:0;}
+
+/* ===== 好友 ===== */
+.friend-card{display:flex;align-items:center;gap:14px;padding:15px 16px;cursor:pointer;transition:background .12s;}
+.friend-card:hover{background:#f7faf7;}
+.friend-card+.friend-card{border-top:1px solid var(--line);}
+.fa{width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:23px;color:#fff;flex-shrink:0;box-shadow:0 4px 10px rgba(0,0,0,.08);}
+.ft{flex:1;min-width:0;}
+.ft .n{font-size:16px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:7px;}
+.ft .p{font-size:12.5px;color:var(--mut);margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.ft .p .tag{color:var(--pitch-deep);background:var(--pitch-soft);padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;}
+.ft .p .tag.o{background:var(--draw-soft);color:#a86a00;}
+.ft .p .tag.t{background:#eef2ef;color:var(--ink-2);}
+.fa-tag{font-size:11.5px;color:var(--mut);}
+/* 最近一起踢球日期徽章 */
+.lp{display:inline-flex;align-items:center;gap:5px;margin-top:8px;padding:4px 10px;border-radius:20px;background:linear-gradient(120deg,#eef7ff,#e9f6ee);color:#2a6f86;font-size:11.5px;font-weight:700;border:1px solid #d5ecf4;}
+.lp b{color:var(--pitch-deep);font-weight:800;}
+.lp.none{background:#f2f4f2;color:#98a49b;border-color:transparent;}
+.fa-big{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;color:#fff;flex-shrink:0;box-shadow:0 6px 16px rgba(0,0,0,.12);}
+.letter-h{position:sticky;top:0;background:var(--bg);padding:10px 18px 6px;font-size:12px;font-weight:800;color:var(--pitch-deep);letter-spacing:1px;}
+/* 好友档案高亮数据带 */
+.fhl{display:flex;align-items:center;gap:14px;padding:13px 14px;border-radius:15px;background:linear-gradient(120deg,#178a4d,#2bb06a);color:#fff;margin:4px 0 2px;}
+.fhl .fi{font-size:24px;}
+.fhl .fn{font-size:12px;opacity:.9;}
+.fhl .fv{font-size:20px;font-weight:800;margin-top:2px;line-height:1.2;}
+
+/* ===== 表单 ===== */
+.fg{margin-bottom:14px;}
+.fl{font-size:12.5px;font-weight:700;color:var(--ink);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;}
+.fl .hint{color:var(--mut);font-weight:500;font-size:11.5px;}
+.in,.sel,.ta{width:100%;border:1.5px solid var(--line);background:#fbfdfb;border-radius:12px;padding:11px 13px;font-size:15px;color:var(--ink);outline:none;transition:border .15s,box-shadow .15s;font-family:inherit;}
+.in:focus,.sel:focus,.ta:focus{border-color:var(--pitch);background:#fff;box-shadow:0 0 0 3px rgba(29,138,78,.08);}
+.ta{min-height:72px;resize:vertical;line-height:1.6;}
+.fr{display:flex;gap:10px;}
+.fr .fg{flex:1;min-width:0;}
+.seg{display:flex;background:#eaf0ec;border-radius:12px;padding:3px;gap:3px;}
+.seg button{flex:1;border:none;background:transparent;padding:9px 4px;font-size:13.5px;font-weight:700;border-radius:9px;color:var(--mut);cursor:pointer;font-family:inherit;}
+.seg button.on{background:#fff;color:var(--pitch-deep);box-shadow:0 1px 4px rgba(0,0,0,.08);}
+
+/* ===== 打卡日历 ===== */
+.cal-h{display:flex;align-items:center;justify-content:space-between;padding:6px 6px 12px;}
+.cal-nav{display:flex;align-items:center;gap:14px;}
+.cal-nav button{border:none;background:#eef2ef;width:32px;height:32px;border-radius:10px;cursor:pointer;font-size:16px;color:var(--ink-2);}
+.cal-nav button:active{background:var(--pitch-soft);}
+.cal-title{font-size:16px;font-weight:800;color:var(--ink);min-width:96px;text-align:center;}
+.cal-w{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;text-align:center;}
+.cal-wd{font-size:11px;color:var(--mut);font-weight:700;padding:3px 0;}
+.cal-day{aspect-ratio:1;border-radius:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:13px;color:var(--ink-2);cursor:pointer;position:relative;font-weight:600;}
+.cal-day:hover{background:#eef4f0;}
+.cal-day.other{color:#c8d1cb;}
+.cal-day.today{outline:2px solid var(--pitch);outline-offset:1px;}
+.cal-day .mk{position:absolute;bottom:4px;width:5px;height:5px;border-radius:50%;}
+.cal-day .mk.train{background:var(--pitch);}
+.cal-day .mk.match{background:var(--win);}
+.cal-day .mk.rest{background:var(--draw);}
+.cal-day .mk.inj{background:#7a8b80;}
+.cal-legend{display:flex;gap:14px;justify-content:center;margin-top:14px;flex-wrap:wrap;}
+.cal-legend span{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mut);}
+.cal-legend i{width:7px;height:7px;border-radius:50%;display:inline-block;}
+.legend-train{background:var(--pitch);}.legend-match{background:var(--win);}.legend-rest{background:var(--draw);}.legend-inj{background:#7a8b80;}
+
+/* 今日打卡行 */
+.checkin-row{display:flex;gap:8px;padding:4px 0 6px;}
+.checkin-row .btn{flex:1;padding:11px 4px;font-size:13px;border-radius:11px;}
+.checkin-row .btn.on-p{background:var(--pitch-soft);color:var(--pitch-deep);border:1.5px solid var(--pitch);}
+.checkin-row .btn.on-m{background:var(--win-soft);color:var(--win);border:1.5px solid var(--win);}
+.checkin-row .btn.on-r{background:var(--draw-soft);color:#a86a00;border:1.5px solid var(--draw);}
+.checkin-row .btn.on-i{background:#e8eeeb;color:#5a6a60;border:1.5px solid #9aa9a0;}
+.stat-line{display:flex;justify-content:space-around;padding:12px 4px 2px;font-size:12px;color:var(--ink-2);}
+.stat-line b{color:var(--ink);font-size:16px;}
+
+/* ===== 记录卡片 ===== */
+.rcard{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:12px;overflow:hidden;}
+.rbody{padding:14px 16px;cursor:pointer;}
+.rbody:hover{background:#fafcfb;}
+.r-top{display:flex;justify-content:space-between;align-items:center;}
+.r-date{font-size:11.5px;color:var(--mut);}
+.r-title{font-size:16px;font-weight:800;color:var(--ink);margin-top:5px;display:flex;align-items:center;gap:8px;}
+.rmeta{display:flex;gap:10px;margin-top:9px;flex-wrap:wrap;align-items:center;color:var(--mut);font-size:13px;}
+.rmeta b{color:var(--ink);}
+.score{display:flex;align-items:center;gap:10px;margin-top:10px;}
+.score .team{font-weight:800;color:var(--ink);font-size:14px;max-width:84px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.score .num{font-size:24px;font-weight:800;min-width:22px;text-align:center;}
+.score .vs{color:#c6d0ca;font-weight:800;font-size:13px;}
+.verdict{font-size:11px;font-weight:800;padding:2px 8px;border-radius:7px;}
+.verdict.vw{color:var(--win);background:var(--win-soft);}.verdict.vd{color:#a86a00;background:var(--draw-soft);}.verdict.vl{color:var(--lose);background:var(--lose-soft);}
+.rfoot{display:flex;border-top:1px solid var(--line);background:#fcfefc;}
+.rfoot div{flex:1;text-align:center;padding:11px 0;font-size:12.5px;color:var(--mut);cursor:pointer;font-weight:600;transition:background .12s;}
+.rfoot div+div{border-left:1px solid var(--line);}
+.rfoot div:active{background:var(--pitch-soft);color:var(--pitch-deep);}
+.rfoot .del{color:var(--win);}
+.rfoot .del:active{background:var(--win-soft);}
+
+/* 比分步进 */
+.stepper{display:flex;justify-content:center;gap:34px;padding:8px 0 2px;}
+.scol{display:flex;flex-direction:column;align-items:center;gap:7px;}
+.scol .who{font-size:12px;font-weight:800;color:var(--mut);}
+.sv{font-size:42px;font-weight:800;line-height:1;}
+.sbtn{width:46px;height:46px;border-radius:14px;background:var(--pitch-soft);color:var(--pitch-deep);font-size:25px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;user-select:none;}
+.sbtn:active{transform:scale(.9);background:var(--pitch);color:#fff;}
+.rating{display:flex;gap:2px;justify-content:center;padding:2px 0;}
+.star{font-size:29px;cursor:pointer;color:#e4e9e5;}
+.star.on{color:#f5b83d;}
+
+/* 明细 */
+.kv-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;}
+.ki{background:#f6f9f6;border-radius:13px;padding:12px 13px;}
+.ki .k{font-size:11px;color:var(--mut);}
+.ki .v{font-size:17px;font-weight:800;color:var(--ink);margin-top:3px;}
+.kv{background:#f6f9f6;border-radius:13px;padding:13px 15px;}
+.kv p{font-size:14.5px;line-height:1.75;color:var(--ink);white-space:pre-wrap;}
+.dst{font-size:12.5px;font-weight:800;color:var(--mut);margin:0 0 7px;display:flex;align-items:center;gap:6px;}
+.dst::before{content:"";width:3px;height:12px;background:var(--pitch);border-radius:2px;}
+
+/* 统计 */
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
+.sc{background:var(--card);border-radius:15px;box-shadow:var(--sh);padding:13px 8px;text-align:center;}
+.sc .si{font-size:19px;}
+.sc .sn{font-size:22px;font-weight:800;color:var(--ink);}
+.sc .sl{font-size:10.5px;color:var(--mut);margin-top:1px;}
+.ring{width:150px;height:150px;margin:4px auto;position:relative;}
+.ring svg{transform:rotate(-90deg);}
+.ring .rc{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.ring .rc .n{font-size:33px;font-weight:800;color:var(--ink);}
+.ring .rc .l{font-size:11px;color:var(--mut);}
+.legend{display:flex;justify-content:center;gap:20px;margin-top:2px;}
+.legend span{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-2);}
+.legend i{width:9px;height:9px;border-radius:3px;display:inline-block;}
+.bar{display:flex;align-items:center;gap:9px;margin:9px 0;}
+.bar .bl{width:34px;font-size:12px;color:var(--ink-2);font-weight:700;flex-shrink:0;}
+.bar .track{flex:1;height:15px;background:#eaf0ec;border-radius:8px;overflow:hidden;}
+.bar .fill{height:100%;border-radius:8px;transition:width .5s;}
+.bar .bp{width:32px;font-size:12px;color:var(--mut);text-align:right;font-weight:700;flex-shrink:0;}
+
+/* 我的 */
+.me-head{display:flex;align-items:center;gap:16px;padding:6px 0 2px;}
+.ava{width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,var(--pitch),#2bb06a);display:flex;align-items:center;justify-content:center;font-size:30px;color:#fff;flex-shrink:0;box-shadow:0 7px 18px rgba(29,138,78,.3);}
+.menu{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;margin-bottom:12px;}
+.menu .it{display:flex;align-items:center;gap:13px;padding:15px 16px;border-bottom:1px solid var(--line);cursor:pointer;transition:background .12s;}
+.menu .it:last-child{border-bottom:none;}
+.menu .it:hover{background:#f7faf7;}
+.mi{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.mt{flex:1;min-width:0;}
+.mt .t{font-size:14.5px;font-weight:700;color:var(--ink);}
+.mt .s{font-size:11.5px;color:var(--mut);margin-top:1px;}
+.arrow{color:#c3ccc6;font-size:19px;}
+
+/* Switch */
+.sw{position:relative;width:46px;height:27px;flex-shrink:0;display:inline-block;}
+.sw input{opacity:0;width:0;height:0;}
+.sl{position:absolute;cursor:pointer;inset:0;background:#dbe2dd;border-radius:14px;transition:.25s;}
+.sl:before{content:"";position:absolute;height:21px;width:21px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.25s;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+input:checked+.sl{background:var(--pitch);}
+input:checked+.sl:before{transform:translateX(19px);}
+
+/* ===== Sheet ===== */
+.sheet-mask{position:absolute;inset:0;z-index:120;display:flex;justify-content:center;align-items:flex-end;background:rgba(12,22,16,.5);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .22s;}
+.sheet-mask.show{opacity:1;pointer-events:auto;}
+.sheet{background:#fbfdfb;width:400px;max-width:100%;max-height:92%;border-radius:26px 26px 0 0;padding:12px 20px calc(26px + env(safe-area-inset-bottom));overflow-y:auto;scrollbar-width:none;transform:translateY(50px);opacity:0;transition:transform .3s cubic-bezier(.2,.85,.2,1),opacity .22s;}
+.sheet::-webkit-scrollbar{display:none;}
+.sheet-mask.show .sheet{transform:none;opacity:1;}
+.sbar{width:40px;height:5px;background:#dfe5e0;border-radius:3px;margin:4px auto 14px;flex-shrink:0;}
+.sh{display:flex;justify-content:space-between;align-items:center;}
+.sh h3{font-size:19px;font-weight:800;color:var(--ink);}
+.sx{border:none;background:#edf1ee;width:30px;height:30px;border-radius:50%;font-size:14px;color:var(--mut);cursor:pointer;flex-shrink:0;}
+
+/* toast */
+.toast{position:absolute;bottom:calc(var(--tabh)+24px);left:50%;transform:translateX(-50%) translateY(14px);background:rgba(16,26,20,.94);color:#fff;padding:10px 22px;border-radius:30px;font-size:13.5px;font-weight:600;opacity:0;pointer-events:none;transition:.28s;z-index:300;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:88%;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ===== 账号 / 登录 / 好友体系 v0.3 ===== */
+.login-mask{position:absolute;inset:0;background:linear-gradient(160deg,#0f6b3a,#1d8a4e 55%,#2bb06a);z-index:400;display:flex;flex-direction:column;align-items:center;padding:40px 24px;overflow-y:auto;}
+.login-mask .lg-logo{font-size:15px;color:rgba(255,255,255,.9);margin-top:20px;letter-spacing:2px;}
+.login-mask .lg-logo b{font-size:30px;color:#fff;font-weight:900;letter-spacing:1px;}
+.login-mask h3{color:#fff;font-size:19px;margin:6px 0 2px;font-weight:800;}
+.login-mask p.sub{color:rgba(255,255,255,.8);font-size:12.5px;margin-bottom:26px;}
+.acct{background:#f3f6f3;border:1.5px solid #e5ece6;border-radius:14px;padding:11px 14px;display:flex;align-items:center;gap:12px;color:var(--ink);cursor:pointer;transition:.15s;text-align:left;}
+.acct:hover{background:#eaf6ef;}
+.acct.sel{border-color:var(--pitch);background:var(--pitch-soft);}
+.acct+.acct{margin-top:10px;}
+.acct .ana{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:19px;color:#fff;flex-shrink:0;}
+.acct .anm{font-size:15.5px;font-weight:800;color:var(--ink);}
+.acct .arole{font-size:12px;opacity:.7;margin-top:2px;color:var(--mut);}
+.acct .rtag{margin-left:auto;font-size:11px;background:var(--pitch-soft);color:var(--pitch-deep);padding:4px 10px;border-radius:12px;font-weight:700;white-space:nowrap;}
+.login-mask .lg-btn{width:100%;margin-top:22px;}
+.friend-top{display:flex;gap:8px;align-items:center;}
+.ftop-chip{flex:1;display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;cursor:pointer;transition:.15s;}
+.ftop-chip:active{background:#f1f5f1;}
+.ftop-chip .fc-i{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.ftop-chip .fc-t{font-size:13px;font-weight:700;color:var(--ink);}
+.ftop-chip .fc-s{font-size:11px;color:var(--mut);margin-top:1px;}
+.reddot{min-width:16px;height:16px;border-radius:8px;background:var(--win);color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 5px;margin-left:auto;}
+/* 好友主页 */
+.hp-hero{display:flex;align-items:center;gap:14px;padding:14px;border-radius:18px;background:linear-gradient(135deg,#178a4d,#2bb06a);color:#fff;margin:6px 0 2px;}
+.hp-hero .hp-ava{width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.18);flex-shrink:0;}
+.hp-hero .hp-n{font-size:20px;font-weight:800;}
+.hp-hero .hp-sub{font-size:12px;opacity:.92;margin-top:3px;}
+.hp-chip{background:rgba(255,255,255,.2);padding:2px 8px;border-radius:9px;font-size:11px;font-weight:700;margin-left:6px;}
+.hp-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--card);border:1px solid var(--line);border-radius:15px;margin-bottom:8px;}
+.hp-row .hr-i{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.hp-row .hr-t{font-size:15px;font-weight:800;color:var(--ink);}
+.hp-row .hr-s{font-size:11.5px;color:var(--mut);margin-top:1px;}
+.hp-row .hr-v{margin-left:auto;font-size:13px;font-weight:800;color:var(--ink-2);text-align:right;white-space:nowrap;}
+/* 好友动态流 */
+.fact{display:flex;gap:11px;padding:12px 14px;background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:8px;}
+.fact .fa2{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.fact .fa-t{font-size:14px;font-weight:800;color:var(--ink);}
+.fact .fa-d{font-size:11.5px;color:var(--mut);margin-top:2px;}
+.fact .fa-note{font-size:12.5px;color:var(--ink-2);margin-top:5px;line-height:1.5;}
+</style>
+</head>
+<body>
+
+<div class="desk-note">
+  <h2>⚽ 绿茵日志</h2>
+  <p>你的足球训练 · 比赛 · 好友 · 打卡 一站式记录 App 的<b>高保真交互原型</b>。在右侧手机中点击体验,所有数据保存在浏览器本地。</p>
+  <span class="pill">📱 手机 App 原型 v0.2</span>
+</div>
+
+<!-- ================= 手机 ================= -->
+<div class="phone" id="phone">
+  <div class="statusbar"><span id="nowTime">21:37</span><span>🔋 100%</span></div>
+
+  <div class="screen" id="screen">
+
+    <!-- 首页 -->
+    <div id="page-home">
+      <div class="hero">
+        <div class="hi-row">
+          <div class="hi">👋 <b id="heroName">小马</b>,今天也要上场呀</div>
+          <span class="chip c-p" id="heroStreak">🔥 连续0天</span>
+        </div>
+        <div class="gname">绿茵<i>日志</i></div>
+        <div class="hero-tagline">把每一次训练与比赛,变成看得见的成长。</div>
+        <div class="qstats">
+          <div class="qs"><div class="n" id="q-games">0</div><div class="l">出场</div></div>
+          <div class="qs"><div class="n" id="q-goals">0</div><div class="l">进球</div></div>
+          <div class="qs"><div class="n" id="q-assists">0</div><div class="l">助攻</div></div>
+          <div class="qs"><div class="n" id="q-mates">0</div><div class="l">好友</div></div>
+        </div>
+      </div>
+
+      <!-- 今日打卡横幅 -->
+      <div class="banner" id="bannerCard">
+        <div class="bn">📅 今日打卡</div>
+        <div class="bs" id="bannerStatus"></div>
+        <div class="checkin-row bact" id="bannerBtns" style="margin-top:12px"></div>
+      </div>
+
+      <!-- 快捷记录 -->
+      <div class="sec-t">快捷记录</div>
+      <div class="pad" style="padding-top:2px">
+        <div class="card" style="padding:12px;display:flex;gap:10px">
+          <button class="btn btn-p" style="flex:1" onclick="go('records');setRecTab('match')">⚽ 记比赛</button>
+          <button class="btn btn-o" style="flex:1" onclick="openNew('training')">🏃 记训练</button>
+          <button class="btn btn-ghost" style="flex:1" onclick="openFriends()">👥 好友</button>
+        </div>
+      </div>
+
+      <div class="sec-t">最近动态</div>
+      <div class="pad" style="padding-top:2px">
+        <div class="card" id="home-activity" style="padding:4px 0"></div>
+      </div>
+    </div>
+
+    <!-- 记录中心 -->
+    <div id="page-records" class="hidden">
+      <div class="pad" style="padding-bottom:2px"><div class="gname" style="font-size:22px">记录中心</div><div class="hero-tagline">训练 · 比赛 · 赛后总结</div></div>
+      <div class="pad" style="padding-top:10px;padding-bottom:2px">
+        <div class="seg" id="recSeg">
+          <button data-tab="train" class="on" onclick="setRecTab('train')">🏃 训练</button>
+          <button data-tab="match" onclick="setRecTab('match')">⚽ 比赛</button>
+          <button data-tab="sum" onclick="setRecTab('sum')">📝 总结</button>
+        </div>
+      </div>
+      <div id="rec-body" style="padding:10px 18px 0"></div>
+      <button class="fab" onclick="fabRec()">＋</button>
+    </div>
+
+    <!-- 好友 -->
+    <div id="page-friends" class="hidden">
+      <div class="pad" style="padding-bottom:2px"><div class="gname" style="font-size:22px">球友</div><div class="hero-tagline" id="friendCount">与球友一起并肩踢球</div></div>
+      <div class="pad" style="padding-top:8px">
+        <div class="friend-top">
+          <div class="ftop-chip" onclick="openAddFriend()"><div class="fc-i" style="background:#eaf6ef">🔍</div><div style="flex:1"><div class="fc-t">添加球友</div><div class="fc-s">搜索昵称发好友申请</div></div></div>
+          <div class="ftop-chip" onclick="openRequests()"><div class="fc-i" style="background:#fdecec">✉️</div><div style="flex:1"><div class="fc-t">新的朋友</div><div class="fc-s" id="reqSub">暂无申请</div></div><div class="reddot" id="reqDot" style="display:none">0</div></div>
+        </div>
+      </div>
+      <div class="sec-t">我的球友</div>
+      <div class="pad" style="padding-top:2px">
+        <div class="card" id="friend-list"></div>
+      </div>
+    </div>
+
+    <!-- 统计 -->
+    <div id="page-stats" class="hidden">
+      <div class="pad" style="padding-bottom:2px"><div class="gname" style="font-size:22px">数据统计</div><div class="hero-tagline">用数据复盘你的足球轨迹</div></div>
+      <div id="stats-body"></div>
+    </div>
+
+    <!-- 我的 -->
+    <div id="page-me" class="hidden">
+      <div class="pad" style="padding-bottom:2px">
+        <div class="me-head" onclick="openAccountMenu()" style="cursor:pointer">
+          <div class="ava" id="meAva" style="background:var(--pitch)">⚽</div>
+          <div style="flex:1;min-width:0">
+            <div class="gname" style="font-size:21px" id="meName">小马</div>
+            <div class="hero-tagline" id="meRole">前锋 · 惯用脚:右脚</div>
+          </div>
+          <div class="arrow">›</div>
+        </div>
+      </div>
+      <div class="sec-t">档案与设置</div>
+      <div class="pad" style="padding-top:2px">
+        <div class="menu">
+          <div class="it" onclick="openProfile()"><div class="mi" style="background:#e9f6ee">🪪</div><div class="mt"><div class="t">个人资料</div><div class="s">身高、体重、位置、惯用脚</div></div><div class="arrow">›</div></div>
+          <div class="it" onclick="openSettings()"><div class="mi" style="background:#e8eef7">⚙️</div><div class="mt"><div class="t">偏好设置</div><div class="s">夜间模式、打卡提醒</div></div><div class="arrow">›</div></div>
+        </div>
+      </div>
+      <div class="sec-t">数据管理</div>
+      <div class="pad" style="padding-top:2px">
+        <div class="menu">
+          <div class="it" onclick="exportCsv()"><div class="mi" style="background:#fdf0dd">📤</div><div class="mt"><div class="t">导出数据</div><div class="s">下载 CSV 备份全部记录</div></div><div class="arrow">›</div></div>
+          <div class="it" onclick="openReset()"><div class="mi" style="background:#f9e3e3">🗑️</div><div class="mt"><div class="t">清空 / 重置</div><div class="s">恢复为演示数据</div></div><div class="arrow">›</div></div>
+        </div>
+      </div>
+      <div style="text-align:center;color:#b6c0ba;font-size:11px;line-height:1.8;margin:20px 0 6px">绿茵日志 · 足球记录助手<br>高保真交互原型 v0.2 · 数据存于本地</div>
+    </div>
+
+  </div><!-- screen -->
+
+  <div class="tabbar">
+    <div class="tab active" data-p="home" onclick="go('home')"><div class="ti">🏠</div>首页</div>
+    <div class="tab" data-p="records" onclick="go('records')"><div class="ti">📋</div>记录</div>
+    <div class="tab" data-p="friends" onclick="go('friends')"><div class="ti">👥</div><span>球友</span><div class="dot" id="fdot"></div></div>
+    <div class="tab" data-p="stats" onclick="go('stats')"><div class="ti">📊</div>统计</div>
+    <div class="tab" data-p="me" onclick="go('me')"><div class="ti">👤</div>我的</div>
+  </div>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+/* ================= 数据层(多账号 + 好友体系 v0.3) ================= */
+const KEY_ACCOUNTS='footballLog_accounts_v3';
+const KEY_CUR='footballLog_cur_v3';
+const KEY_RELS='footballLog_rels_v3';
+const uidD=(u)=>'footballLog_data_'+u;
+/* 全局账号目录:name 公开昵称, color 头像色 */
+const ACCOUNTS={
+  xiaoma:{name:'小马',color:'#1d8a4e',foot:'右脚'},
+  ahao:{name:'阿豪',color:'#e5484d',foot:'右脚'},
+  dapeng:{name:'大鹏',color:'#1d8a4e',foot:'右脚'},
+  kevin:{name:'Kevin',color:'#2f6fd6',foot:'右脚'},
+  ajun:{name:'阿俊',color:'#e8930c',foot:'左脚'},
+};
+let DB={profile:{},trainings:[],matches:[],summaries:[],checkins:{},settings:{}};
+let ME=null;
+let RELS=[];
+const curUid=()=>ME;
+const friendEdge=(a,b)=>RELS.find(r=>(r.a===a&&r.b===b)||(r.a===b&&r.b===a));
+const areFriends=(a,b)=>{const e=friendEdge(a,b);return !!e&&e.status==='friend';};
+const pad=n=>String(n).padStart(2,'0');
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());};
+
+
+/* ===== 每个账号的分区演示数据 ===== */
+function demoDataOf(uid){
+  const base=(()=>{
+    if(uid!=='xiaoma')return null;
+    return {
+      profile:{name:'小马',pos:'前锋',posDetail:'ST / LW',foot:'右脚',height:'178',weight:'72',team:'绿茵FC',number:'9',color:'#1d8a4e'},
+      trainings:[
+        {id:'t1',date:'2026-09-01',type:'射门',duration:90,intensity:4,feel:'状态不错',note:'重点练禁区外远射,右脚连续命中 3 次。'},
+        {id:'t2',date:'2026-08-28',type:'体能',duration:75,intensity:5,feel:'很累',note:'冲刺折返+变向,咬牙完成,充分拉伸。'},
+        {id:'t3',date:'2026-08-24',type:'对抗',duration:60,intensity:3,feel:'一般般',note:'5v5,跑位意识和出球速度要加强。'},
+      ],
+      matches:[
+        {id:'m1',date:'2026-08-30',opp:'城北联',home:true,gf:3,ga:1,starts:true,pos:'ST',goalsN:2,assistsN:1,yellow:0,red:0,rating:8.5,note:'梅开二度+一次助攻!'},
+        {id:'m2',date:'2026-08-22',opp:'红杉竞技',home:false,gf:1,ga:1,starts:true,pos:'LW',goalsN:0,assistsN:1,yellow:1,red:0,rating:6.8,note:'客场逼平,反击传中助攻。'},
+        {id:'m3',date:'2026-08-15',opp:'东湖国际',home:true,gf:0,ga:2,starts:true,pos:'ST',goalsN:0,assistsN:0,yellow:0,red:0,rating:5.5,note:'整体低迷,错失单刀。'},
+        {id:'m4',date:'2026-08-08',opp:'晨光联',home:false,gf:2,ga:0,starts:true,pos:'CF',goalsN:1,assistsN:0,yellow:0,red:0,rating:7.5,note:'定位球头球破门。'},
+      ],
+      summaries:[
+        {id:'s1',matchId:'m1',date:'2026-08-30',content:'梅开二度+助攻,状态和信心在高点。跑位积极,反越位成功,和前腰配合渐入佳境。下半场体能下滑,有两次回防不到位。',highlights:'梅开二度、反越位跑位、与前腰撞墙',problems:'下半场体能、回防意识',improvement:'加强折返跑体能;学习被紧逼时一脚出球。'},
+        {id:'s2',matchId:'m2',date:'2026-08-22',content:'客场被压制靠反击拿分。作为左边锋拿球少,需要主动要球、内切制造机会。',highlights:'反击精准传中助攻',problems:'无球站位太靠边',improvement:'练内切搓射;多踢有球内切。'},
+      ],
+      checkins:{'2026-08-08':'match','2026-08-15':'match','2026-08-20':'train','2026-08-22':'match','2026-08-24':'train','2026-08-28':'train','2026-09-01':'train','2026-09-02':'rest'},
+    };
+  })();
+  if(base)return base;
+  const spec={
+    ahao:{pos:'中场',number:'8',height:'175',weight:'68',team:'绿茵FC',suf:'撞墙配合越来越稳。'},
+    dapeng:{pos:'后卫',number:'4',height:'182',weight:'78',team:'绿茵FC',suf:'今天补位很果断。'},
+    kevin:{pos:'门将',number:'1',height:'186',weight:'80',team:'晨光联',suf:'高接低挡,扑出关键球。'},
+    ajun:{pos:'前锋',number:'11',height:'177',weight:'70',team:'东湖国际',suf:'反击一打一个准。'},
+  }[uid]||{pos:'球员',number:'-',height:'',weight:'',team:'自由人',suf:'继续加油。'};
+  const A=ACCOUNTS[uid]||{name:uid,color:'#1d8a4e',foot:'右脚'};
+  const p={name:A.name,pos:spec.pos,posDetail:'',foot:A.foot||'右脚',height:spec.height,weight:spec.weight,team:spec.team,number:spec.number,color:A.color};
+  return {
+    profile:p,
+    trainings:[{id:'t1',date:'2026-08-28',type:'对抗',duration:80,intensity:4,feel:'不错',note:'跟队合练,状态在线。'}],
+    matches:[
+      {id:'m1',date:'2026-08-30',opp:'城北联',home:true,gf:2,ga:1,starts:true,pos:spec.pos,goalsN:uid==='ajun'?1:0,assistsN:0,yellow:0,red:0,rating:7.4,note:spec.suf},
+      {id:'m2',date:'2026-08-15',opp:'东湖国际',home:false,gf:1,ga:2,starts:true,pos:spec.pos,goalsN:0,assistsN:0,yellow:0,red:0,rating:6.3,note:'客场惜败,细节要抠。'},
+    ],
+    summaries:[{id:'s1',matchId:'m1',date:'2026-08-30',content:spec.suf,highlights:'团队配合',problems:'把握机会',improvement:'加强最后一击。'}],
+    checkins:{'2026-08-28':'train','2026-08-30':'match'},
+  };
+}
+function readBox(u){try{const r=localStorage.getItem(uidD(u));return r?JSON.parse(r):null;}catch(e){return null;}}
+function writeBox(u,d){try{localStorage.setItem(uidD(u),JSON.stringify(d));}catch(e){}}
+/* 某账号对外公开信息(昵称/头像色来自目录;资料里更全的部分仅在互为好友时由好友主页读取) */
+function seed(){
+  Object.keys(ACCOUNTS).forEach(u=>{ if(readBox(u)==null) writeBox(u,demoDataOf(u)); });
+  if(!localStorage.getItem(KEY_RELS)){
+    RELS=[
+      {a:'xiaoma',b:'ahao',status:'friend',at:'2026-06-01'},
+      {a:'xiaoma',b:'dapeng',status:'friend',at:'2026-06-10'},
+      {a:'kevin',b:'xiaoma',status:'friend',at:'2026-07-05'},
+      {a:'ajun',b:'xiaoma',status:'pending',at:'2026-09-03'},
+    ];
+    persistRels();
+  } else { loadRels(); }
+}
+function loginAs(u){
+  ME=u; try{localStorage.setItem(KEY_CUR,u);}catch(e){}
+  let d=readBox(u);
+  if(!d){ seed(); d=readBox(u)||{profile:{},trainings:[],matches:[],summaries:[],checkins:{},settings:{}}; }
+  DB=d;
+  DB.profile=DB.profile||{};DB.trainings=DB.trainings||[];DB.matches=DB.matches||[];DB.summaries=DB.summaries||[];DB.checkins=DB.checkins||{};DB.settings=DB.settings||{};
+  DB.profile.uid=u; DB.profile.color=DB.profile.color||(ACCOUNTS[u]&&ACCOUNTS[u].color||'#1d8a4e');
+  DB.profile.name=DB.profile.name||(ACCOUNTS[u]&&ACCOUNTS[u].name)||u;
+}
+function load(){
+  try{const r=localStorage.getItem(KEY_RELS);RELS=r?JSON.parse(r):[];}catch(e){RELS=[];}
+  if(!RELS.length)seed(); else loadRels();
+  const c=localStorage.getItem(KEY_CUR);
+  const uid=ACCOUNTS[c]?c:'xiaoma';
+  loginAs(uid);
+}
+function save(){ if(ME) writeBox(ME,DB); }
+function loadRels(){ try{const r=localStorage.getItem(KEY_RELS);RELS=r?JSON.parse(r):[];}catch(e){RELS=[];} }
+function persistRels(){ try{localStorage.setItem(KEY_RELS,JSON.stringify(RELS));}catch(e){} }
+
+
+/* ============ 工具 ============ */
+const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtD=iso=>{if(!iso)return'';const p=iso.split('-');return(+p[1])+'月'+(+p[2])+'日';};
+const fmtDF=iso=>{if(!iso)return'';const p=iso.split('-');const wk=['日','一','二','三','四','五','六'];let d=new Date(iso+'T00:00:00');return(+p[1])+'月'+(+p[2])+'日 周'+wk[d.getDay()];};
+const fmtDFY=iso=>{if(!iso)return'';const p=iso.split('-');const wk=['日','一','二','三','四','五','六'];let d=new Date(iso+'T00:00:00');return p[0]+'年'+(+p[1])+'月'+(+p[2])+'日 · 周'+wk[d.getDay()];};
+const daysAgo=iso=>{if(!iso)return null;const d=new Date(iso+'T00:00:00');const t=new Date();t.setHours(0,0,0,0);const diff=Math.round((t-d)/86400000);return diff;}
+/* 最近一起踢球的友好表述 */
+const lpText=iso=>{const d=daysAgo(iso);if(d==null)return null;
+  if(d===0)return'今天一起踢球';if(d===1)return'昨天一起踢球';
+  if(d<7)return d+' 天前一起踢球';
+  return fmtD(iso)+' 一起踢球';};
+const verdict=m=>m.gf>m.ga?'win':m.gf===m.ga?'draw':'lose';
+const verdictCn=m=>({win:'胜',draw:'平',lose:'负'})[verdict(m)];
+const verdictLabel={win:['胜','vw'],draw:['平','vd'],lose:['负','vl']};
+const intLab=i=>['低','较低','中','较高','极高'][Math.max(0,Math.min(4,(i||3)-1))];
+const CK={train:['训练','var(--pitch)','训练打卡'],match:['比赛','var(--win)','出场比赛'],rest:['休息','var(--draw)','休息调整'],inj:['伤病','#7a8b80','伤病休养']};
+let toastT;
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2000);}
+function closeMask(mask){if(!mask)return;mask.classList.remove('show');setTimeout(()=>mask.remove(),300);}
+function openSheet(html){closeSheets();const mk=document.createElement('div');mk.className='sheet-mask';mk.innerHTML='<div class="sheet"><div class="sbar"></div>'+html+'</div>';mk.addEventListener('click',e=>{if(e.target===mk)closeMask(mk);});$('#phone').appendChild(mk);requestAnimationFrame(()=>requestAnimationFrame(()=>mk.classList.add('show')));}
+function closeSheets(){$$('.sheet-mask').forEach(closeMask);}
+function sheetH(t){return `<div class="sh"><h3>${t}</h3><button class="sx" onclick="closeTop()">✕</button></div>`;}
+function closeTop(){const a=[...$$('.sheet-mask')].pop();closeMask(a);}
+
+/* ============ 路由 ============ */
+let cur='home', recTab='train';
+const PAGES=['home','records','friends','stats','me'];
+function go(p){
+  cur=p;PAGES.forEach(x=>$('#page-'+x).classList.toggle('hidden',x!==p));
+  $$('.tab').forEach(t=>t.classList.toggle('active',t.dataset.p===p));
+  $('#screen').scrollTop=0;
+  if(p==='home')renderHome();
+  if(p==='records')renderRec();
+  if(p==='friends')renderFriends();
+  if(p==='stats')renderStats();
+  if(p==='me')renderMe();
+}
+function setRecTab(t){recTab=t;$$('#recSeg button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));renderRecBody();}
+function openNew(kind){ kind==='training'?editTraining(null):kind==='match'?editMatch(null):openSummary(null); }
+/* 账号面板:演示多用户 + 每人仅能编辑自己的内容 */
+function openAccountMenu(){
+  const cur=ME;
+  const rows=Object.keys(ACCOUNTS).map(u=>{
+    const A=ACCOUNTS[u]; const d=readBox(u)||{profile:{}}; const p=d.profile||{};
+    const isCur=u===cur;
+    const nm=p.name||A.name||u;
+    return '<div class="acct '+(isCur?'sel':'')+'" onclick="switchAccount(\''+u+'\')">'
+      +'<div class="ana" style="background:'+(p.color||A.color||'var(--pitch)')+'">'+esc(nm[0])+'</div>'
+      +'<div style="flex:1;min-width:0"><div class="anm">'+esc(nm)+'</div><div class="arole">'+esc((p.pos||'球员')+(p.team?' · '+p.team:''))+'</div></div>'
+      +(isCur?'<span class="rtag">当前</span>':'<span class="rtag" style="background:rgba(255,255,255,.12)">切换</span>')
+      +'</div>';
+  }).join('');
+  openSheet(sheetH('👤 切换账号')
+   +'<div class="hp-hero" style="align-items:flex-start"><div class="fi" style="font-size:22px">🔐</div><div style="flex:1;min-width:0"><div class="fn">多用户演示</div><div class="fv" style="font-size:13.5px;line-height:1.6">每人一份独立数据、只能编辑自己的内容;成为球友后才能互相查看资料与踢球动态。</div></div></div>'
+   +'<div style="margin:14px 0 4px">'+rows+'</div>'
+   +'<div style="background:#f2f5f2;border-radius:14px;padding:12px 14px;font-size:12.5px;color:#5a6a60;line-height:1.8;margin-top:8px">💡 切换到「阿俊」:可看到阿俊申请加小马(新的朋友→同意);或用小马搜「阿俊」发申请,体验双向好友流程。</div>'
+   +'<button class="btn btn-ghost btn-block" style="margin-top:14px" onclick="closeTop()">关闭</button>');
+}
+function switchAccount(u){
+  if(u===ME){toast('已是当前账号');return;}
+  loginAs(u); renderAll(); closeTop();
+  setTimeout(()=>{toast('✅ 已切换为 '+DB.profile.name+' · 只能编辑自己的内容');},260);
+}
+function fabRec(){recTab==='train'?openNew('training'):recTab==='match'?openNew('match'):openNew('summary');}
+function renderRec(){renderRecBody();}
+function renderRecBody(){$('#rec-body').innerHTML=recTab==='train'?trainHTML():recTab==='match'?matchHTML():sumHTML();}
+
+/* ============ 出勤打卡 ============ */
+function checkinDay(t){DB.checkins[today()]=(DB.checkins[today()]===t?'':t);save();renderAll();toast(DB.checkins[today()]?('✅ 已打卡:'+CK[DB.checkins[today()]][0]):'已取消今日打卡');}
+function setCheckinFor(d,t){const k=d+'';DB.checkins[k]=(DB.checkins[k]===t?'':t);save();renderAll();}
+function calcStreak(){let n=0;const d=new Date();while(true){const k=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());if(DB.checkins[k])n++;else break;d.setDate(d.getDate()-1);}return n;}
+function renderHome(){
+  $('#heroName').textContent=DB.profile.name||'球员';
+  $('#heroStreak').textContent='🔥 连续'+calcStreak()+'天';
+  $('#q-games').textContent=DB.matches.length;
+  let g=0,a=0;DB.matches.forEach(m=>{g+=m.goalsN||0;a+=m.assistsN||0;});
+  $('#q-goals').textContent=g;$('#q-assists').textContent=a;$('#q-mates').textContent=friendUids().length;
+  // banner
+  const ck=DB.checkins[today()];
+  $('#bannerStatus').innerHTML=ck?('<strong>'+CK[ck][0]+'</strong> 已打卡,今天也没有缺席!💪'):'<strong>还没有打卡</strong>,记录一下今天的活动吧';
+  $('#bannerBtns').innerHTML=['train','match','rest','inj'].map(t=>`<button class="btn ${ck===t?'on-'+{train:'p',match:'m',rest:'r',inj:'i'}[t]:''}" onclick="checkinDay('${t}')">${CK[t][2]}</button>`).join('');
+  // activity
+  const acts=[];
+  DB.matches.forEach(m=>acts.push({d:m.date,m}));
+  DB.trainings.forEach(t=>acts.push({d:t.date,t}));
+  acts.sort((a,b)=>b.d.localeCompare(a.d));
+  const box=$('#home-activity');
+  if(!acts.length){box.innerHTML='<div class="empty"><div class="ei">⚽</div><p>还没有记录<br>从今天开始吧!</p></div>';return;}
+  box.innerHTML=acts.slice(0,6).map(a=>{
+    if(a.m){const m=a.m;const v=verdict(m);const col=verdictLabel[v][1];
+      return `<div class="act" onclick="view('match','${m.id}')"><div class="ai" style="background:var(--win-soft)">⚽</div>
+        <div class="at"><div class="t">vs ${esc(m.opp)} <span class="${col}">${m.gf}:${m.ga} ${verdictCn(m)}</span></div><div class="s">${fmtDF(m.d)}${m.goalsN?' · 进'+m.goalsN:''}${m.assistsN?' · 助'+m.assistsN:''}</div></div>
+        <span class="ar">${DB.checkins[m.d]==='match'?'✔打卡':'未打卡'}</span></div>`;}
+    return `<div class="act" onclick="view('training','${a.t.id}')"><div class="ai" style="background:var(--pitch-soft)">🏃</div>
+      <div class="at"><div class="t">${esc(a.t.type)}训练</div><div class="s">${fmtDF(a.t.d)} · ${a.t.duration}分钟</div></div>
+      <span class="ar">${DB.checkins[a.t.d]==='train'?'✔打卡':'未打卡'}</span></div>`;
+  }).join('');
+}
+
+/* ============ 段选择 / 颜色 ============ */
+function pickSeg(b){b.parentElement.querySelectorAll("button").forEach(x=>x.classList.remove("on"));b.classList.add("on");}
+function pickColor(el,c){pickedColor=c;el.parentElement.querySelectorAll("div").forEach(d=>d.style.borderColor="transparent");el.style.borderColor="var(--ink)";}
+let pickedColor="var(--pitch)";
+
+/* ============ 好友 ============ */
+/* 我的互为好友列表 */
+function friendUids(){
+  return RELS.filter(r=>r.status==='friend'&&(r.a===ME||r.b===ME))
+    .map(r=>r.a===ME?r.b:r.a);
+}
+/* 收到给我的待处理申请(对方 a 想加我 ME) */
+function incomingReqs(){
+  return RELS.filter(r=>r.status==='pending'&&r.b===ME);
+}
+/* 我发出的待处理申请 */
+function outgoingReqs(){
+  return RELS.filter(r=>r.status==='pending'&&r.a===ME);
+}
+/* 申请状态:对某个 uid 我能否申请/已申请/已是好友/他是我的申请方 */
+function relState(u){
+  if(u===ME)return 'self';
+  if(areFriends(ME,u))return 'friend';
+  const e=friendEdge(ME,u);
+  if(e)return e.a===ME?'outgoing':'incoming'; /* incoming=对方想加我 */
+  return 'none';
+}
+function renderFriends(){
+  const uids=friendUids();
+  $('#friendCount').textContent=uids.length?('共 '+uids.length+' 位球友,点击头像查看资料'):'还没有球友,去上面添加吧';
+  const inc=incomingReqs();
+  const d=document.getElementById('reqDot');
+  if(d){ d.style.display=inc.length?'flex':'none'; d.textContent=inc.length; }
+  const s=document.getElementById('reqSub');
+  if(s) s.textContent=inc.length?(inc.length+' 条好友申请'):'暂无申请';
+  const box=document.getElementById('friend-list');
+  if(!uids.length){
+    box.innerHTML='<div class="empty"><div class="ei">👥</div><p>还没有球友<br>点「添加球友」搜索昵称,互为好友后即可互相查看资料与动态</p></div>';
+    return;
+  }
+  box.innerHTML=uids.map(u=>{
+    const A=ACCOUNTS[u]||{name:u,color:'var(--pitch)'};
+    const d=readBox(u)||{profile:{}}; const p=d.profile||{};
+    const edge=friendEdge(ME,u);
+    const name=A.name||p.name||u; const ch=(name[0]);
+    const col=p.color||A.color||'var(--pitch)';
+    const pos=p.pos||'球员'; const team=p.team||'';
+    const lp=edge&&edge.lastPlayed?lpText(edge.lastPlayed):null;
+    const note=(DB.notes&&DB.notes[u])||'';
+    return `<div class="friend-card" onclick="viewFriend('${u}')">
+      <div class="fa" style="background:${col}">${esc(ch)}</div>
+      <div class="ft">
+        <div class="n">${esc(name)}${note?`<span class="tag t" style="background:#eef2ef">${esc(note)}</span>`:''}</div>
+        <div class="p"><span class="tag">${esc(pos)}</span>${team?`<span class="tag t">${esc(team)}</span>`:''}</div>
+        <span class="lp ${lp?'':'none'}">⚽ ${lp?('最近踢球:'+lp):'还没有一起踢过'}</span>
+      </div>
+      <div class="arrow">›</div>
+    </div>`;
+  }).join('');
+}
+/* 好友主页:仅互为好友可见;只读展示对方资料 + 踢球动态 */
+function viewFriend(u){
+  const st=relState(u);
+  if(st!=='friend'){ openBlockedProfile(u,st); return; }
+  const d=readBox(u)||{profile:{},trainings:[],matches:[],summaries:[]};
+  const A=ACCOUNTS[u]||{}; const p=Object.assign({},A,d.profile||{});
+  const name=p.name||u; const col=p.color||A.color||'var(--pitch)';
+  const edge=friendEdge(ME,u); const lp=edge&&edge.lastPlayed;
+  const ms=d.matches||[]; const g=ms.filter(m=>m.gf>m.ga).length;
+  const goals=ms.reduce((x,m)=>x+(m.goalsN||0),0); const as=ms.reduce((x,m)=>x+(m.assistsN||0),0);
+  const acts=[];
+  (d.matches||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).forEach(m=>{
+    acts.push({i:m.home?'🏟️':'✈️',t:(m.home?'主':'客')+'场 vs '+esc(m.opp)+' '+m.gf+':'+m.ga+' '+(m.gf>m.ga?'胜':m.gf===m.ga?'平':'负'),d:fmtD(m.date),n:(m.note||'').slice(0,40),s:'⭐ '+(m.rating||'-')+(m.goalsN?' · '+m.goalsN+'球':'')});
+  });
+  (d.trainings||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).forEach(t=>{
+    acts.push({i:'🏃',t:esc(t.type)+'训练 '+(t.duration||0)+'分钟',d:fmtD(t.date),n:(t.note||'').slice(0,40),s:''});
+  });
+  acts.sort((a,b)=>(b.d||'').localeCompare(a.d||''));
+  const actRows=acts.slice(0,12).map(a=>`<div class="fact"><div class="fa2" style="background:#eef6ef">${a.i}</div><div style="flex:1;min-width:0"><div class="fa-t">${a.t}${a.s?` <span class="tag" style="background:#fdf3e0;color:#a86a00">${a.s}</span>`:''}</div><div class="fa-d">${a.d}</div>${a.n?`<div class="fa-note">${a.n}</div>`:''}</div></div>`).join('');
+  const hp='<div style="display:flex;align-items:center;gap:16px;margin:6px 0 2px">'
+   +'<div class="fa-big" style="background:'+col+'">'+esc(name[0])+'</div>'
+   +'<div style="flex:1;min-width:0">'
+   +'<div style="font-size:22px;font-weight:800;color:var(--ink)">'+esc(name)+'<span class="chip c-g" style="padding:2px 9px;margin-left:8px">'+esc(p.pos||'球员')+'</span></div>'
+   +'<div style="font-size:13px;color:var(--mut);margin-top:4px">'+esc(p.team||'自由人')+' · 惯用脚:'+esc(p.foot||'—')+(p.height?' · '+esc(p.height)+'cm':'')+(p.weight?' · '+esc(p.weight)+'kg':'')+'</div>'
+   +'<div style="font-size:11.5px;color:#a7b2aa;margin-top:3px">'+ (edge.at?('成为球友于 '+fmtD(edge.at)):'') +' · 仅球友可见</div>'
+   +'</div></div>';
+  openSheet(sheetH('球友资料')+hp
+   +'<div class="fhl"><div class="fi">⚽</div><div style="flex:1"><div class="fn">最近一起踢球</div><div class="fv">'+(lp?lpText(lp):'还没有一起踢过')+'</div></div><div style="text-align:right;opacity:.95;font-size:11.5px">'+(lp?fmtD(lp):'')+'</div></div>'
+   +'<button class="btn btn-o btn-block" style="margin:10px 0 4px" onclick="recordPlay(\''+u+'\')">📅 记录最近一起踢球日期</button>'
+   +'<div class="dst" style="margin-top:14px">踢球动态</div>'
+   +'<div class="qstats" style="margin:8px 0 6px"><div class="qs"><div class="n">'+ms.length+'</div><div class="l">出场</div></div><div class="qs"><div class="n">'+goals+'</div><div class="l">进球</div></div><div class="qs"><div class="n">'+as+'</div><div class="l">助攻</div></div><div class="qs"><div class="n">'+g+'</div><div class="l">胜场</div></div></div>'
+   +(actRows||'<p style="color:#aab4ac;font-size:13px;padding:6px 0">还没有动态</p>')
+   +'<div style="display:flex;gap:10px;margin-top:16px">'
+   +'<button class="btn btn-ghost" style="flex:1" onclick="setRemark(\''+u+'\')">备注</button>'
+   +'<button class="btn btn-danger" style="flex:1" onclick="unfriend(\''+u+'\')">删除球友</button>'
+   +'</div>');
+}
+/* 陌生人/申请态预览:不暴露其资料细节 */
+function openBlockedProfile(u,st){
+  const A=ACCOUNTS[u]||{name:u,color:'var(--pitch)'};
+  const name=A.name; const ch=name[0];
+  let body;
+  if(st==='outgoing') body='<div class="kv" style="margin:8px 0"><p>你已向对方发送好友申请,等待同意后即可互相查看资料。</p></div><button class="btn btn-ghost btn-block" onclick="cancelReq(\''+u+'\')">撤回申请</button>';
+  else if(st==='incoming') body='<div class="kv" style="margin:8px 0"><p>TA 想加你为好友,同意后即可互相查看资料与动态。</p></div><div style="display:flex;gap:10px"><button class="btn btn-p" style="flex:1" onclick="acceptReq(\''+u+'\')">同意</button><button class="btn btn-ghost" style="flex:1" onclick="declineReq(\''+u+'\')">忽略</button></div>';
+  else body='<div class="kv" style="margin:8px 0"><p>对方还不是你的球友,其资料对非好友隐藏。<br>添加并互为好友后即可查看。</p></div><button class="btn btn-p btn-block" onclick="sendReq(\''+u+'\')">添加好友</button>';
+  openSheet(sheetH('用户资料')
+   +'<div style="display:flex;align-items:center;gap:16px;margin:10px 0 6px">'
+   +'<div class="fa-big" style="background:'+A.color+'">'+esc(ch)+'</div>'
+   +'<div><div style="font-size:21px;font-weight:800;color:var(--ink)">'+esc(name)+'</div>'
+   +'<div style="font-size:12.5px;color:var(--mut);margin-top:3px">🔒 资料已隐藏 · 成为球友后可见</div></div></div>'
+   +body);
+}
+function openAddFriend(){
+  openSheet(sheetH('添加球友')
+   +'<div style="margin:12px 0 6px"><input class="in" id="q-uid" placeholder="搜索球友昵称,如:阿豪 / Kevin" style="background:#f2f5f2"></div>'
+   +'<p style="color:#b6c0ba;font-size:12px;padding:0 2px">演示球友:小马、阿豪、大鹏、Kevin、阿俊</p>'
+   +'<div id="q-res" style="margin-top:10px"></div>');
+  const i=document.getElementById('q-uid');
+  const run=()=>{ const q=(i.value||'').trim();
+    const box=document.getElementById('q-res');
+    if(!q){ box.innerHTML=''; return; }
+    const list=Object.keys(ACCOUNTS).filter(u=>u!==ME && ACCOUNTS[u].name.indexOf(q)>=0);
+    if(!list.length){ box.innerHTML='<p style="color:#aab4ac;font-size:13px;text-align:center;margin:14px 0">未找到昵称含「'+esc(q)+'」的球友</p>'; return; }
+    box.innerHTML=list.map(u=>{
+      const A=ACCOUNTS[u]; const st=relState(u);
+      const d=readBox(u)||{profile:{}}; const p=d.profile||{};
+      let btn,dis,act;
+      if(st==='friend'){btn='已添加';dis='disabled';act='';}
+      else if(st==='outgoing'){btn='已申请';dis='disabled';act='';}
+      else if(st==='self'){btn='';dis='disabled';act='';}
+      else if(st==='incoming'){btn='同意';dis='';act='onclick="acceptReq(\''+u+'\')"';}
+      else {btn='添加';dis='';act='onclick="sendReq(\''+u+'\')"';}
+      const cls=st==='friend'?'btn-ghost':(st==='incoming'?'btn-p':'btn-o');
+      return '<div class="friend-card">'
+        +'<div class="fa" style="background:'+A.color+'">'+esc(A.name[0])+'</div>'
+        +'<div class="ft"><div class="n">'+esc(A.name)+'</div><div class="p"><span class="tag">'+esc(p.pos||'球员')+'</span>'+(p.team?'<span class="tag t">'+esc(p.team)+'</span>':'')+'</div></div>'
+        +'<button class="btn '+cls+'" style="font-size:12.5px;padding:8px 13px;flex-shrink:0" '+dis+' '+act+'>'+btn+'</button>'
+        +'</div>';
+    }).join('');
+  };
+  i.addEventListener('input',run); run();
+}
+function openRequests(){
+  const inc=incomingReqs(); const out=outgoingReqs();
+  const ihtml=inc.length?inc.map(e=>{ const u=e.a; const A=ACCOUNTS[u]; const d=readBox(u)||{}; const p=d.profile||{};
+    return '<div class="friend-card">'
+     +'<div class="fa" style="background:'+A.color+'">'+esc(A.name[0])+'</div>'
+     +'<div class="ft"><div class="n">'+esc(A.name)+'</div><div class="p"><span class="tag">'+esc(p.pos||'球员')+'</span><span class="fa-tag" style="margin-left:4px">想加你为球友</span></div></div>'
+     +'<div style="display:flex;gap:7px;flex-shrink:0"><button class="btn btn-ghost" style="font-size:12px;padding:8px 11px" onclick="declineReq(\''+u+'\')">忽略</button><button class="btn btn-p" style="font-size:12px;padding:8px 14px" onclick="acceptReq(\''+u+'\')">同意</button></div></div>';
+  }).join(''):'<div class="empty" style="padding:26px 0"><p>暂无好友申请</p></div>';
+  const ohtml=out.length?out.map(e=>{ const u=e.b; const A=ACCOUNTS[u];
+    return '<div class="friend-card"><div class="fa" style="background:'+A.color+'">'+esc(A.name[0])+'</div><div class="ft"><div class="n">'+esc(A.name)+'</div><div class="p"><span class="tag" style="background:#f2f5f2;color:#7a8b80">等待对方同意</span></div></div><button class="btn btn-ghost" style="font-size:12px;padding:8px 12px;flex-shrink:0" onclick="cancelReq(\''+u+'\')">撤回</button></div>';
+  }).join(''):'<p style="color:#b6c0ba;font-size:12.5px;padding:10px 2px">暂无你发出的申请</p>';
+  openSheet(sheetH('新的朋友')
+   +'<div class="dst" style="margin-top:6px">好友申请</div>'
+   +'<div class="card" style="overflow:hidden">'+ihtml+'</div>'
+   +'<div class="dst" style="margin-top:14px">我发出的申请</div>'
+   +'<div class="card" style="overflow:hidden">'+ohtml+'</div>');
+}
+function sendReq(u){
+  if(relState(u)==='friend'||relState(u)==='self')return;
+  if(relState(u)==='outgoing'){toast('已申请过了');return;}
+  RELS.push({a:ME,b:u,status:'pending',at:today()}); persistRels(); save();
+  closeTop(); setTimeout(function(){renderFriends();toast('✅ 已发送好友申请');},260);
+}
+function acceptReq(u){
+  const e=friendEdge(ME,u);
+  if(e){ e.status='friend'; }
+  else { RELS.push({a:u,b:ME,status:'friend',at:today()}); }
+  persistRels(); save();
+  closeTop(); setTimeout(function(){renderFriends();toast('✅ 已是球友,可互相查看资料');},260);
+}
+function declineReq(u){
+  RELS=RELS.filter(r=>!((r.a===u&&r.b===ME)||(r.a===ME&&r.b===u)));
+  persistRels(); save();
+  closeTop(); setTimeout(function(){renderFriends();toast('已忽略该申请');},260);
+}
+function cancelReq(u){
+  RELS=RELS.filter(r=>!((r.a===ME&&r.b===u)||(r.a===u&&r.b===ME)));
+  persistRels(); save();
+  closeTop(); setTimeout(function(){renderFriends();toast('已撤回申请');},260);
+}
+function unfriend(u){
+  if(!confirm('删除球友 '+(ACCOUNTS[u]?ACCOUNTS[u].name:u)+'?'))return;
+  RELS=RELS.filter(r=>!((r.a===ME&&r.b===u)||(r.a===u&&r.b===ME)));
+  persistRels(); save();
+  closeTop(); renderFriends(); toast('已删除球友');
+}
+/* 记录最近一起踢球日期(存关系,双方可见) */
+function recordPlay(u){
+  const e=friendEdge(ME,u); if(!e)return;
+  const cur=e.lastPlayed||'';
+  openSheet(sheetH('📅 最近一起踢球')
+   +'<div class="fg" style="margin-top:16px"><div class="fl">和 '+(ACCOUNTS[u]?ACCOUNTS[u].name:u)+' 最近一起踢球</div><input type="date" class="in" id="rp-date" value="'+(cur||today())+'"></div>'
+   +'<button class="btn btn-p btn-block" style="margin-top:18px" onclick="savePlay(\''+u+'\')">保存</button>');
+}
+function savePlay(u){
+  const e=friendEdge(ME,u); if(!e)return;
+  e.lastPlayed=document.getElementById('rp-date').value;
+  persistRels(); save(); closeTop();
+  setTimeout(function(){ viewFriend(u); toast('✅ 已记录一起踢球日期'); },260);
+}
+/* 给好友加备注(仅自己可见,存于我分区) */
+function setRemark(u){
+  DB.notes=DB.notes||{};
+  const cur=DB.notes[u]||'';
+  openSheet(sheetH('备注')
+   +'<div class="fg" style="margin-top:14px"><div class="fl">对 '+(ACCOUNTS[u]?ACCOUNTS[u].name:u)+' 的备注(仅自己可见)</div><textarea class="ta" id="rm-note" placeholder="对方的球风、默契、注意事项…">'+esc(cur)+'</textarea></div>'
+   +'<button class="btn btn-p btn-block" style="margin-top:16px" onclick="saveRemark(\''+u+'\')">保存备注</button>');
+}
+function saveRemark(u){
+  DB.notes=DB.notes||{};
+  DB.notes[u]=document.getElementById('rm-note').value.trim();
+  save(); closeTop(); toast('✅ 备注已保存');
+}
+/* ============ 训练 ============ */
+const TTYPES=['射门','传球','盘带','头球','体能','对抗','战术','恢复'];
+function trainHTML(){
+  const l=[...DB.trainings].sort((a,b)=>b.date.localeCompare(a.date));
+  if(!l.length)return'<div class="empty"><div class="ei">🏃</div><p>还没有训练记录<br>点击右下角 ＋ 开始</p></div>';
+  return l.map(t=>`<div class="rcard"><div class="rbody" onclick="view('training','${t.id}')">
+    <div class="r-top"><span class="r-date">${fmtDFY(t.date)}</span><span class="chip c-p">${intLab(t.intensity)}强度</span></div>
+    <div class="r-title">🏃 ${esc(t.type)}训练</div>
+    <div class="rmeta"><span>⏱ <b>${t.duration}</b>分</span><span>😌 ${esc(t.feel||'—')}</span></div>
+  </div><div class="rfoot"><div onclick="view('training','${t.id}')">查看</div><div onclick="openEdit('training','${t.id}')">编辑</div><div class="del" onclick="del('training','${t.id}')">删除</div></div></div>`).join('');
+}
+function editTraining(id){
+  editId=id;const t=id?DB.trainings.find(x=>x.id===id):null;
+  openSheet(`${sheetH(t?'编辑训练':'记录训练')}
+  <div class="accent" style="height:3px;background:linear-gradient(90deg,var(--pitch),#2bb06a);border-radius:2px;margin:10px 0 16px"></div>
+  <div class="fg"><div class="fl">日期</div><input type="date" class="in" id="tr-date" value="${t?t.date:today()}"></div>
+  <div class="fg"><div class="fl">科目</div><div class="seg">${TTYPES.map(x=>`<button type="button" class="${(t?t.type:'射门')===x?'on':''}" onclick="pickSeg(this)">${x}</button>`).join('')}</div></div>
+  <div class="fr">
+    <div class="fg"><div class="fl">时长<span class="hint">分钟</span></div><input type="number" class="in" id="tr-dur" value="${t?t.duration:90}"></div>
+    <div class="fg"><div class="fl">强度</div><div class="seg">${[1,2,3,4,5].map(n=>`<button type="button" class="${(t?t.intensity:3)===n?'on':''}" onclick="pickSeg(this)">${n}</button>`).join('')}</div></div>
+  </div>
+  <div class="fg"><div class="fl">身体感受</div><div class="seg">${['状态不错','一般般','很累','轻微疲劳'].map(x=>`<button type="button" class="${(t?t.feel:'状态不错')===x?'on':''}" onclick="pickSeg(this)">${x}</button>`).join('')}</div></div>
+  <div class="fg"><div class="fl">备注</div><textarea class="ta" id="tr-note">${esc(t?t.note:'')}</textarea></div>
+  <button class="btn btn-p btn-block" onclick="saveTraining()">${t?'保存修改':'保存训练'}</button>`);
+}
+function saveTraining(){
+  const mask=$('#phone .sheet-mask.show');if(!mask)return;
+  const date=$('#tr-date').value;if(!date){toast('请选择日期');return;}
+  const sgs=[...mask.querySelectorAll('.seg')];
+  const rec={date,type:sgs[0].querySelector('button.on').textContent,duration:+$('#tr-dur').value||90,intensity:+sgs[1].querySelector('button.on').textContent,feel:sgs[2].querySelector('button.on').textContent,note:$('#tr-note').value.trim()};
+  if(editId){Object.assign(DB.trainings.find(x=>x.id===editId)||{},rec);}else{DB.trainings.push({id:'t'+Date.now(),...rec});}
+  save();closeTop();editId=null;renderAll();toast('✅ 训练已保存');
+}
+
+/* ============ 比赛 ============ */
+const POSS=['ST','CF','LW','RW','CAM','CM','CDM','LB','RB','CB','GK'];
+let g1=0,g2=0;
+function matchHTML(){
+  const l=[...DB.matches].sort((a,b)=>b.date.localeCompare(a.date));
+  if(!l.length)return'<div class="empty"><div class="ei">⚽</div><p>还没有比赛记录<br>点击右下角 ＋ 开始</p></div>';
+  return l.map(m=>{const v=verdict(m);const loc=m.home?'主场':'客场';const hasSum=DB.summaries.some(s=>s.matchId===m.id);
+    const [cn,cls]=verdictLabel[v];
+    return `<div class="rcard"><div class="rbody" onclick="view('match','${m.id}')">
+      <div class="r-top"><span class="r-date">${fmtDFY(m.date)} · ${loc}</span><span class="chip c-g">${m.starts?'首发':'替补'}</span></div>
+      <div class="score"><span class="team">${esc(DB.profile.team||'我方')}</span><span class="num" style="color:${v==='win'?'var(--win)':v==='draw'?'var(--draw)':'var(--lose)'}">${m.gf}</span><span class="vs">:</span><span class="num" style="color:${v==='win'?'var(--lose)':v==='draw'?'var(--draw)':'var(--win)'}">${m.ga}</span><span class="team">${esc(m.opp)}</span><span class="verdict ${cls}">${cn}</span></div>
+      <div class="rmeta">${m.goalsN?`<span class="chip c-p">⚽${m.goalsN}球</span>`:''}${m.assistsN?`<span class="chip c-p">🎯${m.assistsN}助</span>`:''}<span>⭐<b>${(m.rating||0).toFixed(1)}</b></span>${hasSum?'<span class="chip c-draw">📝已总结</span>':''}</div>
+    </div><div class="rfoot"><div onclick="view('match','${m.id}')">查看</div><div onclick="openEdit('match','${m.id}')">编辑</div><div onclick="openSummary('${m.id}')">写总结</div><div class="del" onclick="del('match','${m.id}')">删除</div></div></div>`;}).join('');
+}
+function editMatch(id){
+  editId=id;const m=id?DB.matches.find(x=>x.id===id):null;
+  g1=m?m.gf:0;g2=m?m.ga:0;
+  openSheet(`${sheetH(m?'编辑比赛':'记录比赛')}
+  <div class="accent" style="height:3px;background:linear-gradient(90deg,var(--win),var(--draw));border-radius:2px;margin:10px 0 16px"></div>
+  <div class="fg"><div class="fl">日期</div><input type="date" class="in" id="ma-date" value="${m?m.date:today()}"></div>
+  <div class="fr">
+    <div class="fg"><div class="fl">主 / 客</div><div class="seg"><button type="button" class="${!m||m.home?'on':''}" onclick="pickSeg(this)">🏠 主场</button><button type="button" class="${m&&!m.home?'on':''}" onclick="pickSeg(this)">✈ 客场</button></div></div>
+    <div class="fg"><div class="fl">对手</div><input class="in" id="ma-opp" value="${esc(m?m.opp:'')}"></div>
+  </div>
+  <div class="fg"><div class="fl">比分</div>
+    <div class="stepper">
+      <div class="scol"><span class="who" style="color:var(--pitch)">我方</span><button class="sbtn" onclick="bump('g1',-1)">−</button><div class="sv" id="sv1" style="color:${g1>g2?'var(--win)':'var(--ink)'}">${g1}</div><button class="sbtn" onclick="bump('g1',1)">＋</button></div>
+      <div class="scol"><span class="who" style="color:var(--mut)">对手</span><button class="sbtn" onclick="bump('g2',-1)">−</button><div class="sv" id="sv2">${g2}</div><button class="sbtn" onclick="bump('g2',1)">＋</button></div>
+    </div></div>
+  <div class="fr">
+    <div class="fg"><div class="fl">首发 / 替补</div><div class="seg"><button type="button" class="${!m||m.starts?'on':''}" onclick="pickSeg(this)">首发</button><button type="button" class="${m&&!m.starts?'on':''}" onclick="pickSeg(this)">替补</button></div></div>
+    <div class="fg"><div class="fl">位置</div><select class="sel" id="ma-pos">${POSS.map(p=>`<option ${m&&m.pos===p?'selected':''}>${p}</option>`).join('')}</select></div>
+  </div>
+  <div class="fr">
+    <div class="fg"><div class="fl">⚽ 进球</div><input class="in" id="ma-goal" type="number" min="0" value="${m?m.goalsN:0}"></div>
+    <div class="fg"><div class="fl">🎯 助攻</div><input class="in" id="ma-assist" type="number" min="0" value="${m?m.assistsN:0}"></div>
+  </div>
+  <div class="fr">
+    <div class="fg"><div class="fl">🟨 黄牌</div><input class="in" id="ma-y" type="number" min="0" value="${m?m.yellow:0}"></div>
+    <div class="fg"><div class="fl">🟥 红牌</div><input class="in" id="ma-r" type="number" min="0" value="${m?m.red:0}"></div>
+  </div>
+  <div class="fg"><div class="fl">本场评分</div><div class="rating">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<span class="star ${m&&Math.round(m.rating)>=n?'on':''}" data-n="${n}" onclick="pickStar(this)">★</span>`).join('')}</div></div>
+  <div class="fg"><div class="fl">备注</div><textarea class="ta" id="ma-note">${esc(m?m.note:'')}</textarea></div>
+  <button class="btn btn-p btn-block" onclick="saveMatch()">${m?'保存修改':'记录比赛'}</button>`);
+}
+function bump(w,d){if(w==='g1'){g1=Math.max(0,g1+d);$('#sv1').textContent=g1;$('#sv1').style.color=g1>g2?'var(--win)':'var(--ink)';}else{g2=Math.max(0,g2+d);$('#sv2').textContent=g2;}}
+function pickStar(el){const c=el.parentElement;[...c.children].forEach((s,i)=>s.classList.toggle('on',i<=+el.dataset.n-1));}
+function saveMatch(){
+  const mask=$('#phone .sheet-mask.show');if(!mask)return;
+  const opp=$('#ma-opp').value.trim();if(!opp){toast('请填写对手');return;}
+  const sgs=[...mask.querySelectorAll('.seg')];
+  const home=sgs[0].querySelector('button.on').textContent.includes('主');
+  const starts=sgs[1].querySelector('button.on').textContent==='首发';
+  const rating=[...mask.querySelectorAll('.star.on')].length;
+  const rec={date:$('#ma-date').value,opp,home,gf:g1,ga:g2,starts,pos:$('#ma-pos').value,goalsN:+$('#ma-goal').value||0,assistsN:+$('#ma-assist').value||0,yellow:+$('#ma-y').value||0,red:+$('#ma-r').value||0,rating:rating||5,note:$('#ma-note').value.trim()};
+  if(editId){Object.assign(DB.matches.find(x=>x.id===editId)||{},rec);}else{DB.matches.push({id:'m'+Date.now(),...rec});}
+  save();closeTop();editId=null;renderAll();toast('✅ 比赛已记录');
+}
+
+/* ============ 赛后总结 ============ */
+function sumHTML(){
+  const l=[...DB.summaries].sort((a,b)=>b.date.localeCompare(a.date));
+  if(!l.length)return'<div class="empty"><div class="ei">📝</div><p>还没有赛后总结<br>比赛后复盘,进步看得见</p></div>';
+  return l.map(s=>{const m=DB.matches.find(x=>x.id===s.matchId);
+    const tags=(s.highlights||'').split('、').filter(Boolean).slice(0,2);
+    return `<div class="rcard"><div class="rbody" onclick="view('summary','${s.id}')">
+      <div class="r-top"><span class="r-date">${fmtDFY(s.date)}</span><span class="chip c-g">vs ${m?esc(m.opp):'已删'}</span></div>
+      <div class="r-title">📝 赛后总结</div>
+      ${tags.length?`<div class="rmeta">${tags.map(t=>`<span class="chip c-p">✨ ${esc(t)}</span>`).join('')}</div>`:''}
+    </div><div class="rfoot"><div onclick="view('summary','${s.id}')">查看</div><div onclick="openEdit('summary','${s.id}')">编辑</div><div class="del" onclick="del('summary','${s.id}')">删除</div></div></div>`;}).join('');
+}
+function openSummary(mid){
+  editId=null;if(!DB.matches.length){toast('请先记录比赛');setRecTab('match');go('records');return;}
+  const preset=mid||'';
+  openSheet(`${sheetH('✍️ 赛后总结')}
+  <div class="accent" style="height:3px;background:linear-gradient(90deg,#f5b83d,#e67e22);border-radius:2px;margin:10px 0 16px"></div>
+  <div class="fg"><div class="fl">关联比赛</div><select class="sel" id="su-mid">${DB.matches.map(m=>`<option value="${m.id}" ${preset===m.id?'selected':''}>vs ${esc(m.opp)} · ${fmtD(m.date)}</option>`).join('')}</select></div>
+  <div class="fg"><div class="fl">整体表现评价</div><textarea class="ta" id="su-content" placeholder="这场的身体、心态、配合…"></textarea></div>
+  <div class="fg"><div class="fl">亮点<span class="hint">顿号分隔</span></div><input class="in" id="su-hl"></div>
+  <div class="fg"><div class="fl">存在问题</div><input class="in" id="su-pb"></div>
+  <div class="fg"><div class="fl">改进计划</div><textarea class="ta" id="su-imp"></textarea></div>
+  <button class="btn btn-p btn-block" onclick="saveSummary()">保存总结</button>`);
+  if(preset)setTimeout(()=>{const s=$('#su-mid');if(s)s.value=preset;},40);
+}
+function editSummary(id){editId=id;const s=DB.summaries.find(x=>x.id===id);if(!s)return;
+  openSheet(`${sheetH('编辑赛后总结')}
+  <div class="fg"><div class="fl">关联比赛</div><select class="sel" id="su-mid">${DB.matches.map(m=>`<option value="${m.id}" ${m.id===s.matchId?'selected':''}>vs ${esc(m.opp)} · ${fmtD(m.date)}</option>`).join('')}</select></div>
+  <div class="fg"><div class="fl">整体表现评价</div><textarea class="ta" id="su-content">${esc(s.content)}</textarea></div>
+  <div class="fg"><div class="fl">亮点</div><input class="in" id="su-hl" value="${esc(s.highlights)}"></div>
+  <div class="fg"><div class="fl">存在问题</div><input class="in" id="su-pb" value="${esc(s.problems)}"></div>
+  <div class="fg"><div class="fl">改进计划</div><textarea class="ta" id="su-imp">${esc(s.improvement)}</textarea></div>
+  <button class="btn btn-p btn-block" onclick="saveSummary()">保存修改</button>`);
+}
+function saveSummary(){
+  const content=$('#su-content').value.trim();if(!content){toast('请填写评价');return;}
+  const rec={matchId:$('#su-mid').value,date:today(),content,highlights:$('#su-hl').value.trim(),problems:$('#su-pb').value.trim(),improvement:$('#su-imp').value.trim()};
+  if(editId){Object.assign(DB.summaries.find(x=>x.id===editId)||{},rec);}else{DB.summaries.push({id:'s'+Date.now(),...rec});}
+  save();closeTop();editId=null;renderAll();toast('✅ 总结已保存');
+}
+
+/* ============ 查看详情 ============ */
+function view(kind,id){
+  if(kind==='friend')return viewFriend(id);
+  if(kind==='training'){const t=DB.trainings.find(x=>x.id===id);if(!t)return;
+    openSheet(`${sheetH('🏃 训练详情')}
+    <div style="display:flex;align-items:center;gap:15px;margin:12px 0 2px"><div class="ai" style="width:56px;height:56px;font-size:27px;background:var(--pitch-soft)">🏃</div>
+      <div><div style="font-size:21px;font-weight:800;color:var(--ink)">${esc(t.type)}训练</div><div style="font-size:13px;color:var(--mut)">${fmtDFY(t.date)}</div></div></div>
+    <div class="dst" style="margin-top:18px">本次记录</div>
+    <div class="kv-grid"><div class="ki"><div class="k">⏱ 时长</div><div class="v">${t.duration} 分</div></div><div class="ki"><div class="k">🔥 强度</div><div class="v" style="color:var(--pitch)">${intLab(t.intensity)}</div></div><div class="ki"><div class="k">😌 感受</div><div class="v">${esc(t.feel||'—')}</div></div><div class="ki"><div class="k">📅 打卡</div><div class="v">${DB.checkins[t.date]==='train'?'✔ 已打卡':'未打卡'}</div></div></div>
+    ${t.note?`<div class="dst" style="margin-top:16px">备注</div><div class="kv"><p>${esc(t.note)}</p></div>`:''}`);
+  }
+  if(kind==='match'){const m=DB.matches.find(x=>x.id===id);if(!m)return;
+    const v=verdict(m);const [cn,cls]=verdictLabel[v];const hasSum=DB.summaries.find(s=>s.matchId===id);
+    openSheet(`${sheetH('⚽ 比赛详情')}
+    <div style="text-align:center;margin:6px 0 2px"><div style="font-size:12.5px;color:var(--mut)">${fmtDFY(m.date)} · ${m.home?'主场':'客场'}</div>
+      <div style="display:flex;justify-content:center;align-items:center;gap:16px;margin:18px 0 12px">
+        <div style="font-size:17px;font-weight:800">${esc(DB.profile.team||'我方')}</div>
+        <div style="font-size:50px;font-weight:800;color:${v==='win'?'var(--win)':v==='draw'?'var(--draw)':'var(--lose)'}">${m.gf}<span style="color:#c6d0ca;font-size:28px;margin:0 5px">:</span>${m.ga}</div>
+        <div style="font-size:17px;font-weight:800">${esc(m.opp)}</div></div>
+      <div style="display:flex;gap:8px;justify-content:center"><span class="chip c-g">${cn}</span><span class="chip c-g">${m.starts?'首发':'替补'}</span><span class="chip c-g">${m.pos||'-'}</span></div></div>
+    <div class="dst" style="margin-top:20px">个人数据</div>
+    <div class="kv-grid"><div class="ki"><div class="k">⚽ 进球</div><div class="v" style="color:var(--pitch)">${m.goalsN||0}</div></div><div class="ki"><div class="k">🎯 助攻</div><div class="v">${m.assistsN||0}</div></div><div class="ki"><div class="k">🟨 黄牌</div><div class="v">${m.yellow||0}</div></div><div class="ki"><div class="k">🟥 红牌</div><div class="v" style="color:${m.red?'var(--win)':'inherit'}">${m.red||0}</div></div></div>
+    <div class="dst" style="margin-top:16px">本场评分</div><div style="text-align:center;padding:2px 0"><span style="font-size:46px;font-weight:800;color:${m.rating>=7?'var(--pitch)':m.rating>=6?'var(--draw)':'var(--win)'}">${(m.rating||0).toFixed(1)}</span><span style="color:var(--mut)"> / 10</span></div>
+    ${m.note?`<div class="dst" style="margin-top:14px">备注</div><div class="kv"><p>${esc(m.note)}</p></div>`:''}
+    ${hasSum?`<div class="dst" style="margin-top:16px">📝 赛后总结</div><div class="kv" style="background:#fdf8ee"><p style="font-size:13px;color:#8a6d2f">此场已总结,前往「记录→总结」查看。</p></div>`:`<div style="margin-top:16px"><button class="btn btn-p btn-block" onclick="openSummary('${m.id}')">✍️ 为这场写赛后总结</button></div>`}`);
+  }
+  if(kind==='summary'){const s=DB.summaries.find(x=>x.id===id);if(!s)return;const m=DB.matches.find(x=>x.id===s.matchId);
+    const split=v=>(v||'').split('、').filter(Boolean);
+    openSheet(`${sheetH('📝 赛后总结')}
+    <div style="margin:6px 0 2px"><span class="chip c-g">关联:vs ${m?esc(m.opp):'(已删)'} · ${fmtD(s.date)}</span></div>
+    <div class="dst" style="margin-top:18px">整体表现评价</div><div class="kv"><p>${esc(s.content)||'—'}</p></div>
+    <div class="dst" style="margin-top:16px">✨ 本场亮点</div><div class="kv" style="background:var(--pitch-soft)">${split(s.highlights).length?split(s.highlights).map(h=>`<p style="margin:3px 0">✔ ${esc(h)}</p>`).join(''):'<p>—</p>'}</div>
+    <div class="dst" style="margin-top:16px">⚠️ 存在问题</div><div class="kv" style="background:var(--win-soft)">${split(s.problems).length?split(s.problems).map(h=>`<p style="margin:3px 0">▲ ${esc(h)}</p>`).join(''):'<p>—</p>'}</div>
+    <div class="dst" style="margin-top:16px">🎯 改进计划</div><div class="kv" style="background:#eef3fc"><p>${esc(s.improvement)||'—'}</p></div>`);
+  }
+}
+
+/* ============ 统计 ============ */
+let calY,calM;
+function renderStats(){
+  const body=$('#stats-body');const total=DB.matches.length;
+  const win=DB.matches.filter(m=>m.gf>m.ga).length,draw=DB.matches.filter(m=>m.gf===m.ga).length,lose=DB.matches.filter(m=>m.gf<m.ga).length;
+  let gl=0,as=0;DB.matches.forEach(m=>{gl+=m.goalsN||0;as+=m.assistsN||0;});
+  const tc=DB.trainings.length,td=DB.trainings.reduce((s,t)=>s+(t.duration||0),0);
+  const wr=total?Math.round(win/total*100):0;
+  const avg=total?(DB.matches.reduce((s,m)=>s+(m.rating||0),0)/total).toFixed(1):'0.0';
+  const recent=[...DB.matches].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
+  const totck=Object.values(DB.checkins).filter(Boolean).length;
+  const now=new Date();if(calY==null){calY=now.getFullYear();calM=now.getMonth();}
+  const wp=total?Math.round(win/total*100):0,dp=total?Math.round(draw/total*100):0,lp=100-wp-dp;
+  body.innerHTML=`
+  <div class="pad" style="padding-top:6px">
+    <div class="card" style="padding:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="font-size:15px;font-weight:800;color:var(--ink)">🏆 赛季战绩</div><div style="font-size:13px;color:var(--mut)">${total} 场 · 胜率 ${wr}%</div></div>
+      <div style="display:flex;height:24px;border-radius:12px;overflow:hidden;background:#eaf0ec">
+        <div style="background:var(--win);width:${wp}%;color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center">${win?win:''}</div>
+        <div style="background:var(--draw);width:${dp}%;color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center">${draw?draw:''}</div>
+        <div style="background:var(--lose);width:${lp}%;color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center">${lose?lose:''}</div>
+      </div>
+      <div class="legend"><span><i style="background:var(--win)"></i>胜 ${win}</span><span><i style="background:var(--draw)"></i>平 ${draw}</span><span><i style="background:var(--lose)"></i>负 ${lose}</span></div>
+    </div>
+  </div>
+  <div class="sec-t">累计数据</div>
+  <div class="pad" style="padding-top:2px"><div class="stat-grid">
+    <div class="sc"><div class="si">⚽</div><div class="sn">${gl}</div><div class="sl">进球</div></div>
+    <div class="sc"><div class="si">🎯</div><div class="sn">${as}</div><div class="sl">助攻</div></div>
+    <div class="sc"><div class="si">🏆</div><div class="sn">${wr}%</div><div class="sl">胜率</div></div>
+    <div class="sc"><div class="si">⭐</div><div class="sn">${avg}</div><div class="sl">场均评分</div></div>
+    <div class="sc"><div class="si">🏃</div><div class="sn">${tc}</div><div class="sl">训练</div></div>
+    <div class="sc"><div class="si">✅</div><div class="sn">${totck}</div><div class="sl">总打卡</div></div>
+  </div></div>
+  <div class="sec-t">近 5 场评分</div>
+  <div class="pad" style="padding-top:2px"><div class="card" style="padding:8px 16px">
+  ${recent.length?recent.map(m=>{const v=verdict(m);
+    return `<div style="display:flex;align-items:center;gap:9px;margin:11px 0">
+      <span style="font-size:11px;color:var(--mut);width:42px">${fmtD(m.date)}</span>
+      <span style="font-size:12px;font-weight:700;max-width:58px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.opp)}</span>
+      <span class="chip ${verdictLabel[v][1]}" style="padding:1px 6px">${verdictLabel[v][0]}</span>
+      <div style="flex:1;height:10px;background:#eaf0ec;border-radius:5px;overflow:hidden"><div style="height:100%;width:${(m.rating||0)/10*100}%;background:${m.rating>=7?'var(--pitch)':m.rating>=6?'var(--draw)':'var(--win)'};border-radius:5px"></div></div>
+      <span style="font-size:11px;color:var(--mut);width:26px;font-weight:700;text-align:right">${(m.rating||0).toFixed(1)}</span></div>`;}).join(''):'<div class="empty"><div class="ei">📊</div><p>暂无比赛数据</p></div>'}
+  </div></div>
+  ${renderCal()}
+  <div class="sec-t">活动构成</div>
+  <div class="pad" style="padding-top:2px;padding-bottom:20px"><div class="card" style="padding:10px 16px">
+    ${barl('进球',gl,'var(--pitch)',gl?Math.min(100,gl*14):0)}
+    ${barl('助攻',as,'#2bb06a',as?Math.min(100,as*18):0)}
+    ${barl('训练',tc,'#5a9fd6',tc?Math.min(100,tc*12):0)}
+    ${barl('打卡',totck,'#8e6fd8',totck?Math.min(100,totck*3):0)}
+  </div></div>`;
+  function barl(l,v,c,w){return `<div class="bar"><span class="bl">${l}</span><div class="track"><div class="fill" style="width:${w}%;background:${c}"></div></div><span class="bp">${v}</span></div>`;}
+}
+function renderCal(){
+  const first=new Date(calY,calM,1);const todayY=new Date().getFullYear(),todayM=new Date().getMonth(),td=+today().split('-')[2];
+  const weeks=['日','一','二','三','四','五','六'];
+  let cells='';weeks.forEach(w=>cells+=`<div class="cal-wd">${w}</div>`);
+  const lead=first.getDay();
+  const prevDays=new Date(calY,calM,0).getDate();
+  for(let i=lead-1;i>=0;i--){const dd=prevDays-i;const iso=new Date(calY,calM-1,dd).toISOString().slice(0,10).replace(/-/g,'/');/*noop*/cells+=`<div class="cal-day other" data-d="${dd}" data-m="-1"></div>`;}
+  const dim=new Date(calY,calM+1,0).getDate();
+  for(let d=1;d<=dim;d++){const iso=calY+'-'+pad(calM+1)+'-'+pad(d);const ck=DB.checkins[iso];
+    const isT=calY===todayY&&calM===todayM&&d===td;
+    cells+=`<div class="cal-day ${isT?'today':''} ${ck?'':''}" data-d="${d}" data-ck="${ck||''}" onclick="dayTap('${iso}')">${d}${ck?`<span class="mk ${ck}"></span>`:''}</div>`;}
+  const after=7-(lead+dim)%7;if((lead+dim)%7)for(let i=1;i<=after;i++)cells+=`<div class="cal-day other"></div>`;
+  const stats=`<div class="stat-line"><span>训练 <b>${Object.values(DB.checkins).filter(v=>v==='train').length}</b></span><span>比赛 <b>${Object.values(DB.checkins).filter(v=>v==='match').length}</b></span><span>休息 <b>${Object.values(DB.checkins).filter(v=>v==='rest').length}</b></span><span>伤病 <b>${Object.values(DB.checkins).filter(v=>v==='inj').length}</b></span></div>`;
+  return `<div class="sec-t">📅 出勤打卡日历</div>
+  <div class="pad" style="padding-top:2px"><div class="card" style="padding:16px 14px">
+    <div class="cal-h"><div class="cal-nav"><button onclick="calNav(-1)">‹</button><button onclick="calNav(0)">•</button></div><div class="cal-title">${calY}年${calM+1}月</div><div class="cal-nav"><button onclick="calNav(1)">›</button></div></div>
+    <div class="cal-w">${cells}</div>
+    <div class="cal-legend"><span><i class="legend-train"></i>训练</span><span><i class="legend-match"></i>比赛</span><span><i class="legend-rest"></i>休息</span><span><i class="legend-inj"></i>伤病</span></div>
+    ${stats}
+  </div></div>`;
+}
+function calNav(d){if(d===0){const n=new Date();calY=n.getFullYear();calM=n.getMonth();}else{calM+=d;if(calM<0){calM=11;calY--;}if(calM>11){calM=0;calY++;}}renderStats();$('#screen').scrollTop=300;}
+function dayTap(iso){
+  const cur=DB.checkins[iso]||'';
+  const actions=['train','match','rest','inj'].map(t=>{const k=CK[t];const on=cur===t?'on-'+{train:'p',match:'m',rest:'r',inj:'i'}[t]:'';
+    return `<button class="btn ${on}" style="flex:1;padding:12px 4px;font-size:13px" onclick="tapSet('${iso}','${t}')">${k[2]}</button>`;}).join('');
+  openSheet(`${sheetH('📅 '+fmtDFY(iso))}
+  <div style="color:var(--mut);font-size:12.5px;margin:2px 0 12px">当前:${cur?CK[cur][0]:'未打卡'} · 点击选择或再次点击取消</div>
+  <div class="fr" style="gap:8px">${actions}</div>
+  <button class="btn btn-o btn-block" style="margin-top:12px" onclick="clearTap('${iso}')">清除该日打卡</button>`);
+}
+function tapSet(iso,t){if(DB.checkins[iso]===t)delete DB.checkins[iso];else DB.checkins[iso]=t;save();closeTop();renderStats();renderHome();toast('已更新 '+iso.slice(5));}
+function clearTap(iso){delete DB.checkins[iso];save();closeTop();renderStats();renderHome();toast('已清除');}
+
+/* ============ 我的 / 设置 ============ */
+function renderMe(){const p=DB.profile;const name=p.name||'球员';$('#meName').textContent=name;$('#meRole').textContent=(p.pos||'球员')+' · '+(p.team||'自由人')+' · 好友 '+(friendUids().length)+' 人';const ava=document.getElementById('meAva');if(ava){ava.textContent=name[0];ava.style.background=p.color||'var(--pitch)';}}
+function openProfile(){
+  const p=DB.profile;
+  openSheet(`${sheetH('🪪 个人资料')}
+  <div class="fr"><div class="fg"><div class="fl">昵称</div><input class="in" id="pf-name" value="${esc(p.name||'')}"></div><div class="fg"><div class="fl">球队</div><input class="in" id="pf-team" value="${esc(p.team||'')}"></div></div>
+  <div class="fr"><div class="fg"><div class="fl">身高<span class="hint">cm</span></div><input class="in" id="pf-h" value="${esc(p.height||'')}"></div><div class="fg"><div class="fl">体重<span class="hint">kg</span></div><input class="in" id="pf-w" value="${esc(p.weight||'')}"></div></div>
+  <div class="fr"><div class="fg"><div class="fl">位置</div><input class="in" id="pf-pos" value="${esc(p.pos||'')}"></div><div class="fg"><div class="fl">号码</div><input class="in" id="pf-num" value="${esc(p.number||'')}"></div></div>
+  <div class="fg"><div class="fl">惯用脚</div><div class="seg">${['右脚','左脚','双脚'].map(x=>`<button type="button" class="${(p.foot||'右脚')===x?'on':''}" onclick="pickSeg(this)">${x}</button>`).join('')}</div></div>
+  <button class="btn btn-p btn-block" onclick="saveProfile()">保存资料</button>`);
+}
+function saveProfile(){
+  const mask=$('#phone .sheet-mask.show');
+  DB.profile.name=$('#pf-name').value.trim()||'球员';DB.profile.team=$('#pf-team').value.trim();DB.profile.height=$('#pf-h').value;DB.profile.weight=$('#pf-w').value;DB.profile.pos=$('#pf-pos').value.trim();DB.profile.number=$('#pf-num').value;
+  DB.profile.foot=mask.querySelector('.seg button.on').textContent;
+  save();closeTop();renderAll();toast('✅ 资料已更新');
+}
+function openSettings(){
+  openSheet(`${sheetH('⚙️ 偏好设置')}
+  <div class="menu"><div class="it"><div class="mi" style="background:#e8eef7">🌙</div><div class="mt"><div class="t">夜间模式</div><div class="s">深色界面(后续版本)</div></div><label class="sw"><input type="checkbox" ${DB.settings.nightMode?'checked':''} onchange="DB.settings.nightMode=this.checked;save();toast('原型暂以浅色展示')"><span class="sl"></span></label></div>
+  <div class="it"><div class="mi" style="background:#e9f6ee">🔔</div><div class="mt"><div class="t">打卡提醒</div><div class="s">每日定时提醒打卡</div></div><label class="sw"><input type="checkbox" checked><span class="sl"></span></label></div></div>
+  <button class="btn btn-o btn-block" onclick="closeTop()">完成</button>`);
+}
+function openReset(){
+  const fc=friendUids().length;
+  openSheet(sheetH('🗑️ 重置当前账号')
+   +'<div class="kv" style="margin:4px 0 16px"><p>将把当前账号「'+esc(DB.profile.name)+'」的数据清空并恢复为该账号的演示数据,好友关系也会重置。<b>不可撤销</b>。</p></div>'
+   +'<button class="btn btn-danger btn-block" onclick="doReset()">重置为演示数据</button>');
+}
+function doReset(){ if(!confirm('确定清空当前账号并恢复演示数据?'))return;
+  writeBox(ME,demoDataOf(ME)); /* 分区重置 */
+  loginAs(ME);                 /* 重新装载 */
+  RELS=[]; persistRels();      /* 关系重置 */
+  if(!localStorage.getItem(KEY_RELS)){ /* 触发预置关系(小马示例) */
+    RELS=[{a:'xiaoma',b:'ahao',status:'friend',at:'2026-06-01'},{a:'xiaoma',b:'dapeng',status:'friend',at:'2026-06-10'},{a:'kevin',b:'xiaoma',status:'friend',at:'2026-07-05'},{a:'ajun',b:'xiaoma',status:'pending',at:'2026-09-03'}];
+    persistRels();
+  }
+  renderAll(); closeTop(); toast('✅ 已重置');
+}
+function exportCsv(){
+  let c='类型,日期,内容,备注\n';
+  DB.trainings.forEach(t=>c+='训练,'+t.date+','+t.type+'训练 '+t.duration+'分,'+((t.note||'').replace(/\n/g,' '))+'\n');
+  DB.matches.forEach(m=>c+='比赛,'+m.date+',vs '+m.opp+' '+m.gf+':'+m.ga+','+((m.note||'').replace(/\n/g,' '))+'\n');
+  const b=new Blob(['\ufeff'+c],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='绿茵日志-'+DB.profile.name+'.csv';a.click();toast('✅ 已导出');
+}
+/* ============ 通用增删改入口 ============ */
+function openEdit(kind,id){if(kind==='training')editTraining(id);else if(kind==='match')editMatch(id);else if(kind==='summary')editSummary(id);}
+function del(kind,id){
+  if(kind==='training'){if(confirm('删除该训练?')){DB.trainings=DB.trainings.filter(x=>x.id!==id);save();renderAll();toast('已删除');}}
+  else if(kind==='match'){if(confirm('删除该比赛?其总结会一并删除。')){DB.matches=DB.matches.filter(x=>x.id!==id);DB.summaries=DB.summaries.filter(x=>x.matchId!==id);save();renderAll();toast('已删除');}}
+  else if(kind==='summary'){if(confirm('删除该总结?')){DB.summaries=DB.summaries.filter(x=>x.id!==id);save();renderAll();toast('已删除');}}
+}
+function renderAll(){renderHome();renderRec();renderStats();renderMe();renderFriends();}
+
+/* ============ 全局 ============ */
+window.go=go;window.setRecTab=setRecTab;window.fabRec=fabRec;
+window.openNew=openNew;window.openEdit=openEdit;window.del=del;window.view=view;
+window.saveTraining=saveTraining;window.saveMatch=saveMatch;window.saveSummary=saveSummary;window.saveProfile=saveProfile;
+window.pickSeg=pickSeg;window.pickColor=pickColor;window.pickStar=pickStar;window.bump=bump;
+window.checkinDay=checkinDay;window.calNav=calNav;window.dayTap=dayTap;window.tapSet=tapSet;window.clearTap=clearTap;
+window.openFriends=()=>go('friends');window.openAccountMenu=openAccountMenu;window.switchAccount=switchAccount;window.openProfile=openProfile;window.openSettings=openSettings;window.openReset=openReset;window.doReset=doReset;window.exportCsv=exportCsv;
+window.closeTop=closeTop;window.toast=toast;window.openSummary=openSummary;
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTop();});
+let tickT;
+function tick(){const d=new Date();const t=$('#nowTime');if(t)t.textContent=pad(d.getHours())+':'+pad(d.getMinutes());}
+load();go('home');renderAll();tick();setInterval(tick,1000);
+</script>
+</body>
+</html>
