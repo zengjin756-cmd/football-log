@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>绿茵日志 · 足球运动记录</title>
 <meta name="theme-color" content="#1d8a4e">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -28,7 +28,7 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 body,button,input,select,textarea{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,sans-serif;}
-body{background:#d9e3da;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+body{background:#d9e3da;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:0;margin:0;}
 
 /* 桌面说明 */
 .desk-note{position:fixed;left:28px;top:50%;transform:translateY(-50%);width:236px;color:#2b4434;}
@@ -38,11 +38,11 @@ body{background:#d9e3da;min-height:100vh;display:flex;align-items:center;justify
 @media(max-width:1040px){.desk-note{display:none;}}
 
 /* ===== 手机外壳 ===== */
-.phone{width:400px;height:850px;background:var(--bg);border-radius:50px;position:relative;overflow:hidden;flex-shrink:0;
-  box-shadow:0 0 0 11px #0f1411,0 0 0 13px #39423c,0 34px 70px rgba(0,0,0,.4);display:flex;flex-direction:column;}
-.phone::before{content:"";position:absolute;top:9px;left:50%;transform:translateX(-50%);width:128px;height:27px;background:#0f1411;border-radius:0 0 18px 18px;z-index:80;}
-.statusbar{height:48px;display:flex;justify-content:space-between;align-items:flex-end;padding:10px 30px 4px;font-size:13px;font-weight:700;color:var(--ink);flex-shrink:0;}
-.screen{flex:1;overflow-y:auto;overflow-x:hidden;padding-bottom:calc(var(--tabh)+20px);scrollbar-width:none;}
+.phone{width:100%;height:100dvh;height:100vh;background:var(--bg);position:relative;overflow:hidden;flex-shrink:0;display:flex;flex-direction:column;
+  max-width:480px;box-shadow:none;}
+@media(min-width:1041px){body{padding:20px;}.phone{border-radius:34px;box-shadow:0 0 0 10px #0f1411,0 30px 70px rgba(0,0,0,.45);height:min(900px,calc(100dvh - 40px));}}
+/* 顶部安全区：让内容躲开真实手机状态栏/刘海 */
+.screen{flex:1;overflow-y:auto;overflow-x:hidden;padding-top:env(safe-area-inset-top);padding-bottom:calc(var(--tabh) + env(safe-area-inset-bottom) + 20px);scrollbar-width:none;}
 .screen::-webkit-scrollbar{display:none;}
 .hidden{display:none!important;}
 
@@ -58,7 +58,7 @@ body{background:#d9e3da;min-height:100vh;display:flex;align-items:center;justify
 .btn-ghost{background:#eef2ef;color:var(--ink-2);}
 .btn-danger{background:var(--win-soft);color:var(--win);}
 .btn-block{width:100%;}
-.fab{position:absolute;bottom:calc(var(--tabh)+12px);right:16px;width:54px;height:54px;border-radius:17px;background:var(--pitch);color:#fff;font-size:27px;font-weight:300;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px rgba(29,138,78,.45);cursor:pointer;border:none;z-index:40;transition:transform .12s;}
+.fab{position:absolute;bottom:calc(var(--tabh) + env(safe-area-inset-bottom) + 12px);right:16px;width:54px;height:54px;border-radius:17px;background:var(--pitch);color:#fff;font-size:27px;font-weight:300;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px rgba(29,138,78,.45);cursor:pointer;border:none;z-index:40;transition:transform .12s;}
 .fab:active{transform:scale(.88) rotate(90deg);}
 
 .chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:16px;font-size:11.5px;font-weight:700;white-space:nowrap;}
@@ -73,8 +73,8 @@ body{background:#d9e3da;min-height:100vh;display:flex;align-items:center;justify
 .empty p{font-size:13.5px;line-height:1.9;}
 
 /* ===== 底部导航(5个) ===== */
-.tabbar{position:absolute;bottom:0;left:0;right:0;height:var(--tabh);background:rgba(255,255,255,.97);backdrop-filter:blur(14px);display:flex;border-top:1px solid var(--line);z-index:60;padding-bottom:2px;}
-.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#a2aea6;cursor:pointer;font-size:10px;font-weight:700;position:relative;}
+.tabbar{position:absolute;bottom:0;left:0;right:0;height:calc(var(--tabh) + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);backdrop-filter:blur(14px);display:flex;border-top:1px solid var(--line);z-index:60;padding-bottom:calc(2px + env(safe-area-inset-bottom));}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#a2aea6;cursor:pointer;font-size:10px;font-weight:700;position:relative;padding-bottom:calc(env(safe-area-inset-bottom)/2);}
 .tab .ti{font-size:21px;line-height:1;transition:transform .15s;}
 .tab.active{color:var(--pitch);}
 .tab.active .ti{transform:translateY(-1px) scale(1.08);}
@@ -278,11 +278,11 @@ input:checked+.sl:before{transform:translateX(19px);}
 .sx{border:none;background:#edf1ee;width:30px;height:30px;border-radius:50%;font-size:14px;color:var(--mut);cursor:pointer;flex-shrink:0;}
 
 /* toast */
-.toast{position:absolute;bottom:calc(var(--tabh)+24px);left:50%;transform:translateX(-50%) translateY(14px);background:rgba(16,26,20,.94);color:#fff;padding:10px 22px;border-radius:30px;font-size:13.5px;font-weight:600;opacity:0;pointer-events:none;transition:.28s;z-index:300;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:88%;}
+.toast{position:absolute;bottom:calc(var(--tabh) + env(safe-area-inset-bottom) + 24px);left:50%;transform:translateX(-50%) translateY(14px);background:rgba(16,26,20,.94);color:#fff;padding:10px 22px;border-radius:30px;font-size:13.5px;font-weight:600;opacity:0;pointer-events:none;transition:.28s;z-index:300;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:88%;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
 /* ===== 账号 / 登录 / 好友体系 v0.3 ===== */
-.login-mask{position:absolute;inset:0;background:linear-gradient(160deg,#0f6b3a,#1d8a4e 55%,#2bb06a);z-index:400;display:flex;flex-direction:column;align-items:center;padding:40px 24px;overflow-y:auto;}
+.login-mask{position:absolute;inset:0;background:linear-gradient(160deg,#0f6b3a,#1d8a4e 55%,#2bb06a);z-index:400;display:flex;flex-direction:column;align-items:center;padding:calc(env(safe-area-inset-top) + 40px) 24px calc(env(safe-area-inset-bottom) + 40px);overflow-y:auto;}
 .login-mask .lg-logo{font-size:15px;color:rgba(255,255,255,.9);margin-top:20px;letter-spacing:2px;}
 .login-mask .lg-logo b{font-size:30px;color:#fff;font-weight:900;letter-spacing:1px;}
 .login-mask h3{color:#fff;font-size:19px;margin:6px 0 2px;font-weight:800;}
@@ -343,8 +343,6 @@ window.__supabaseReady=false;
 
 <!-- ================= 手机 ================= -->
 <div class="phone" id="phone">
-  <div class="statusbar"><span id="nowTime">21:37</span><span>🔋 100%</span></div>
-
   <div class="screen" id="screen">
 
     <!-- 首页 -->
@@ -1473,9 +1471,7 @@ window.checkinDay=checkinDay;window.calNav=calNav;window.dayTap=dayTap;window.ta
 window.openFriends=()=>go('friends');window.openAccountMenu=openAccountMenu;window.switchAccount=switchAccount;window.openProfile=openProfile;window.openSettings=openSettings;window.openReset=openReset;window.doReset=doReset;window.exportCsv=exportCsv;
 window.closeTop=closeTop;window.toast=toast;window.openSummary=openSummary;
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTop();});
-let tickT;
-function tick(){const d=new Date();const t=$('#nowTime');if(t)t.textContent=pad(d.getHours())+':'+pad(d.getMinutes());}
-load();go('home');renderAll();tick();setInterval(tick,1000);
+load();go('home');renderAll();
 /* 云端入口状态 + 自动恢复云会话 */
 renderCloudBadge();
 if(CLOUD_ENABLED&&cloudSdkLoaded()){
