@@ -310,6 +310,17 @@ input:checked+.sl:before{transform:translateX(19px);}
 .fact .fa-d{font-size:11.5px;color:var(--mut);margin-top:2px;}
 .fact .fa-note{font-size:12.5px;color:var(--ink-2);margin-top:5px;line-height:1.5;}
 </style>
+<script>
+/* supabase-js 延迟加载(接入云端用); 加载失败不影响本地演示模式 */
+window.__supabaseReady=false;
+(function(){
+  var s=document.createElement('script');
+  s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+  s.onload=function(){window.__supabaseReady=true;try{if(window.CLOUD&&typeof window.CLOUD._onSdkReady==='function')window.CLOUD._onSdkReady();}catch(e){}};
+  s.onerror=function(){console.warn('[绿茵日志] supabase SDK 加载失败, 保持本地模式');};
+  document.head.appendChild(s);
+})();
+</script>
 </head>
 <body>
 
@@ -410,6 +421,12 @@ input:checked+.sl:before{transform:translateX(19px);}
             <div class="hero-tagline" id="meRole">前锋 · 惯用脚:右脚</div>
           </div>
           <div class="arrow">›</div>
+        </div>
+      </div>
+      <div class="sec-t">云端账号</div>
+      <div class="pad" style="padding-top:2px">
+        <div class="menu">
+          <div class="it" onclick="openCloudAccount()"><div class="mi" style="background:#e6f1fb">☁️</div><div class="mt"><div class="t" id="cloudAcctTitle">云端登录 / 注册</div><div class="s" id="cloudAcctSub">多设备同步 · 真·好友共享数据</div></div><div class="arrow">›</div></div>
         </div>
       </div>
       <div class="sec-t">档案与设置</div>
@@ -540,7 +557,7 @@ function load(){
   const uid=ACCOUNTS[c]?c:'xiaoma';
   loginAs(uid);
 }
-function save(){ if(ME) writeBox(ME,DB); }
+function save(){ if(ME) writeBox(ME,DB); cloudSyncAfterSave(); }
 function loadRels(){ try{const r=localStorage.getItem(KEY_RELS);RELS=r?JSON.parse(r):[];}catch(e){RELS=[];} }
 function persistRels(){ try{localStorage.setItem(KEY_RELS,JSON.stringify(RELS));}catch(e){} }
 
@@ -553,12 +570,12 @@ function persistRels(){ try{localStorage.setItem(KEY_RELS,JSON.stringify(RELS));
  * 接入原则: 业务层所有数据仍走 readBox/writeBox/persistRels/loginAs,
  *          仅需把这些函数内部改成"云端优先、本地兜底"即可, 调用方零改动。
  * ================================================================ */
-const CLOUD_ENABLED=false;                 // ← 接入云端时改为 true
-const CLOUD_DEMO_MODE=false;               // 云端演示账号模式(接入后可置 true 体验真登录)
+const CLOUD_ENABLED=true;                    // ← 已接入云端(Supabase 项目已建表)
+const CLOUD_DEMO_MODE=false;                 // 云端演示账号模式(暂未用)
 const CLOUD_CONFIG={
-  supabaseUrl:null,                        // 例 'https://xxxx.supabase.co'
-  supabaseAnonKey:null,                    // anon/public key(前端安全)
-  projectRef:null,                         // supabase 项目标识(可留空)
+  supabaseUrl:'https://bwqjdkuinnzmhzmzvzbz.supabase.co',
+  supabaseAnonKey:'sb_publishable_hVy6mUdNIqBCmXdQSwXnHA_9ct653am',
+  projectRef:'bwqjdkuinnzmhzmzvzbz',
 };
 /* Supabase 建表约定(与 football-log/supabase/schema.sql 一一对应) */
 const CLOUD_TABLES={
@@ -575,31 +592,229 @@ const CLOUD_STATE={ client:null, authed:false, uid:null, error:null };
 /* 云能力探测: 当前是否已注入 supabase SDK?(supabase-js 通过 <script> 或 import) */
 function cloudSdkLoaded(){ return typeof supabase!=='undefined' || typeof window.supabase!=='undefined'; }
 
-/* 暴露给全局/控制台的云操作入口(仅接入后有效, 现在调用会给出友好提示) */
+/* 暴露给全局/控制台的云操作入口 */
 window.CLOUD={
   enabled:()=>CLOUD_ENABLED,
   config:CLOUD_CONFIG,
+  state:CLOUD_STATE,
   status:()=>({enabled:CLOUD_ENABLED,sdk:cloudSdkLoaded(),...CLOUD_STATE}),
-  /* 接入后调用: 用 URL+anonKey 创建客户端并验证连通(见 schema.sql 建表) */
-  connect:async function(cfg){
-    if(!cloudSdkLoaded()){ return {ok:false,msg:'supabase-js 未加载。接入时需在 HTML 头部引入 @supabase/supabase-js(见接入文档)'}; }
-    try{
-      if(cfg){ if(cfg.supabaseUrl)CLOUD_CONFIG.supabaseUrl=cfg.supabaseUrl; if(cfg.supabaseAnonKey)CLOUD_CONFIG.supabaseAnonKey=cfg.supabaseAnonKey; }
-      CLOUD_STATE.client=window.supabase.createClient(CLOUD_CONFIG.supabaseUrl,CLOUD_CONFIG.supabaseAnonKey);
-      const {data,error}=await CLOUD_STATE.client.auth.getSession();
-      CLOUD_STATE.authed=!!data?.session; CLOUD_STATE.uid=data?.session?.user?.id||null;
-      CLOUD_STATE.error=error?error.message:null;
-      return {ok:true,...CLOUD_STATE};
-    }catch(e){ CLOUD_STATE.error=e.message; return {ok:false,error:e.message}; }
+  /* 创建客户端(幂等): 若 SDK 未就绪则等 __supabaseReady */
+  _ensureClient:function(){
+    if(CLOUD_STATE.client)return CLOUD_STATE.client;
+    if(!cloudSdkLoaded())return null;
+    CLOUD_STATE.client=window.supabase.createClient(CLOUD_CONFIG.supabaseUrl,CLOUD_CONFIG.supabaseAnonKey,{auth:{persistSession:true,autoRefreshToken:true}});
+    return CLOUD_STATE.client;
   },
-  /* 注册/登录占位 —— 接入后接 supabase.auth.signUp/signInWithPassword */
-  register:async function(email,pass){ if(!CLOUD_STATE.client)return{ok:false,msg:'先 connect()'}; const {data,error}=await CLOUD_STATE.client.auth.signUp({email,password:pass}); return error?{ok:false,error:error.message}:{ok:true,user:data.user}; },
-  login:async function(email,pass){ if(!CLOUD_STATE.client)return{ok:false,msg:'先 connect()'}; const {data,error}=await CLOUD_STATE.client.auth.signInWithPassword({email,password:pass}); CLOUD_STATE.authed=!error;CLOUD_STATE.uid=data?.user?.id||null; return error?{ok:false,error:error.message}:{ok:true,uid:data.user.id}; },
-  logout:async function(){ if(CLOUD_STATE.client){await CLOUD_STATE.client.auth.signOut();} CLOUD_STATE.authed=false;CLOUD_STATE.uid=null; },
-  /* 接入后数据同步占位: 需把 syncToCloud/pullFromCloud 实现为 readBox 的云端对应(见 schema) */
-  syncUp:async function(){ return {ok:false,msg:'尚未接入云端数据同步(见上云方案评估.md P1)'}; },
-  pullDown:async function(){ return {ok:false,msg:'尚未接入云端数据同步(见上云方案评估.md P1)'}; },
+  /* SDK 就绪回调(由 head 里延迟加载脚本触发) */
+  _onSdkReady:function(){
+    if(!CLOUD_ENABLED||!CLOUD_CONFIG.supabaseUrl||!CLOUD_CONFIG.supabaseAnonKey)return;
+    const c=CLOUD._ensureClient();if(!c)return;
+    c.auth.getSession().then(({data})=>{ if(data.session){CLOUD_STATE.authed=true;CLOUD_STATE.uid=data.session.user.id;} });
+  },
+  /* 初始化客户端并恢复会话(返回当前登录态) */
+  connect:async function(cfg){
+    if(cfg){ if(cfg.supabaseUrl)CLOUD_CONFIG.supabaseUrl=cfg.supabaseUrl; if(cfg.supabaseAnonKey)CLOUD_CONFIG.supabaseAnonKey=cfg.supabaseAnonKey; }
+    const c=CLOUD._ensureClient();
+    if(!c)return{ok:false,msg:'supabase SDK 未就绪'};
+    try{ const {data,error}=await c.auth.getSession();
+      CLOUD_STATE.authed=!!data?.session;CLOUD_STATE.uid=data?.session?.user?.id||null;
+      CLOUD_STATE.error=error?error.message:null;return{ok:true,...CLOUD_STATE};
+    }catch(e){CLOUD_STATE.error=e.message;return{ok:false,error:e.message};}
+  },
+  register:async function(email,pass){
+    const c=CLOUD._ensureClient();if(!c)return{ok:false,msg:'云服务未就绪, 请检查网络后重试'};
+    const {data,error}=await c.auth.signUp({email,password:pass,options:{emailRedirectTo:window.location.origin+window.location.pathname}});
+    if(error)return{ok:false,error:error.message};
+    if(!data.session){ return{ok:true,needConfirm:true,msg:'注册成功! 请到邮箱点击确认链接后登录。'}; }
+    CLOUD_STATE.authed=true;CLOUD_STATE.uid=data.session.user.id;return{ok:true,uid:data.session.user.id};
+  },
+  login:async function(email,pass){
+    const c=CLOUD._ensureClient();if(!c)return{ok:false,msg:'云服务未就绪, 请检查网络后重试'};
+    const {data,error}=await c.auth.signInWithPassword({email,password:pass});
+    if(error){ const hint=error.message.includes('Email not confirmed')?'邮箱未验证, 请先到邮箱确认':(error.message.includes('Invalid login')?'邮箱或密码错误':error.message); return{ok:false,error:hint}; }
+    CLOUD_STATE.authed=true;CLOUD_STATE.uid=data.user.id;CLOUD_STATE.email=data.user.email;
+    return{ok:true,uid:data.user.id};
+  },
+  logout:async function(){
+    const c=CLOUD._ensureClient();if(c)await c.auth.signOut();
+    CLOUD_STATE.authed=false;CLOUD_STATE.uid=null;CLOUD_STATE.email=null;
+  },
+  /* ===== 云端数据读写(最小闭环: 拉取当前用户全量 + 同步当前DB) ===== */
+  pullUserData:async function(uid){
+    /* 拉取该用户在云端的训练/比赛/总结/打卡, 云端字段→本地字段映射后返回 DB */
+    const c=CLOUD._ensureClient();if(!c)return{ok:false,error:'no sdk'};
+    try{
+      const [pf,tr,ma,su,ck]=await Promise.all([
+        c.from(CLOUD_TABLES.profiles).select('*').eq('id',uid),
+        c.from(CLOUD_TABLES.trainings).select('*').eq('owner_id',uid),
+        c.from(CLOUD_TABLES.matches).select('*').eq('owner_id',uid),
+        c.from(CLOUD_TABLES.summaries).select('*').eq('owner_id',uid),
+        c.from(CLOUD_TABLES.checkins).select('*').eq('owner_id',uid),
+      ]);
+      const err=[pf,tr,ma,su,ck].find(r=>r.error);if(err)return{ok:false,error:err.error.message};
+      /* 云端→本地字段映射 */
+      const mapMatch=m=>({id:m.id,date:m.date,opp:m.opp||'',home:m.home??true,gf:m.gf??0,ga:m.ga??0,starts:m.starts??true,pos:m.pos||'球员',goalsN:m.goals_n??0,assistsN:m.assists_n??0,yellow:m.yellow??0,red:m.red??0,rating:m.rating??5,note:m.note||''});
+      const mapTrain=t=>({id:t.id,date:t.date,type:t.type||'训练',duration:t.duration||0,intensity:t.intensity||3,feel:t.feel||'',note:t.note||''});
+      const mapSumm=s=>({id:s.id,date:s.date,matchId:s.match_id||null,content:s.content||'',highlights:s.highlights||'',problems:s.problems||'',improvement:s.improvement||''});
+      const profile={};
+      if(pf.data&&pf.data[0]){const p=pf.data[0];
+        profile={name:p.name||'球员',pos:p.pos||'',posDetail:p.pos_detail||'',foot:p.foot||'右脚',height:p.height||'',weight:p.weight||'',team:p.team||'',number:p.number||'',color:p.color||'#1d8a4e'};
+      }
+      const checkins={};(ck.data||[]).forEach(r=>{checkins[r.date]=r.kind;});
+      return{ok:true,db:{profile,trainings:(tr.data||[]).map(mapTrain),matches:(ma.data||[]).map(mapMatch),summaries:(su.data||[]).map(mapSumm),checkins,settings:{}}};
+    }catch(e){return{ok:false,error:e.message};}
+  },
+  /* 把当前 DB 全量同步到云端(upsert), 用于登录后首次备份 */
+  syncUserData:async function(uid,db){
+    const c=CLOUD._ensureClient();if(!c)return{ok:false};
+    try{
+      const tasks=[];
+      if(db.trainings&&db.trainings.length){
+        const rows=db.trainings.map(t=>({id:t.id,owner_id:uid,date:t.date,type:t.type||null,duration:t.duration||null,intensity:t.intensity||null,feel:t.feel||null,note:t.note||null}));
+        tasks.push(c.from(CLOUD_TABLES.trainings).upsert(rows,{onConflict:'id'}).then(r=>r.error&&console.warn('trainings sync',r.error.message)));
+      }
+      if(db.matches&&db.matches.length){
+        const rows=db.matches.map(m=>({id:m.id,owner_id:uid,date:m.date,opp:m.opp||null,home:m.home??null,gf:m.gf??0,ga:m.ga??0,starts:m.starts??null,pos:m.pos||null,goals_n:m.goalsN??0,assists_n:m.assistsN??0,yellow:m.yellow??0,red:m.red??0,rating:m.rating??null,note:m.note||null}));
+        tasks.push(c.from(CLOUD_TABLES.matches).upsert(rows,{onConflict:'id'}).then(r=>r.error&&console.warn('matches sync',r.error.message)));
+      }
+      if(db.summaries&&db.summaries.length){
+        const rows=db.summaries.map(s=>({id:s.id,owner_id:uid,match_id:s.matchId||null,date:s.date,content:s.content||null,highlights:s.highlights||null,problems:s.problems||null,improvement:s.improvement||null}));
+        tasks.push(c.from(CLOUD_TABLES.summaries).upsert(rows,{onConflict:'id'}).then(r=>r.error&&console.warn('summaries sync',r.error.message)));
+      }
+      await Promise.all(tasks);return{ok:true};
+    }catch(e){return{ok:false,error:e.message};}
+  },
+  syncUp:async function(){ return{ok:false,msg:'使用云登录后自动同步, 无需手动调用'}; },
+  pullDown:async function(){ return{ok:false,msg:'使用云登录后自动拉取, 无需手动调用'}; },
 };
+
+/* ============ 云端账号界面 ============ */
+function cloudCloudUIState(){ return CLOUD_ENABLED; }
+function cloudAuthed(){ return !!(CLOUD_ENABLED && CLOUD_STATE.authed && CLOUD_STATE.uid); }
+/* 顶部渲染当前云端登录态 */
+function renderCloudBadge(){
+  const t=document.getElementById('cloudAcctTitle');if(!t)return;
+  const s=document.getElementById('cloudAcctSub');
+  if(cloudAuthed()){
+    t.textContent='☁️ '+(CLOUD_STATE.email||CLOUD_STATE.uid.slice(0,8))+' (已云登录)';
+    s.textContent='云端同步已开启 · 点此查看/退出';
+  }else{
+    t.textContent='云端登录 / 注册';
+    s.textContent=CLOUD_ENABLED?'多设备同步 · 真·好友共享数据':'云端功能未开启';
+  }
+}
+/* 打开云端账号面板 */
+function openCloudAccount(){
+  if(!cloudCloudUIState()){ toast('云端功能未开启'); return; }
+  if(cloudAuthed()){ openCloudLoggedIn(); return; }
+  openCloudLogin();
+}
+/* 未登录 → 登录/注册表单 */
+function openCloudLogin(){
+  openSheet(sheetH('☁️ 云端登录')+
+   '<div style="color:var(--mut);font-size:12.5px;line-height:1.7;margin:2px 0 14px">登录后训练/比赛/好友数据将<b>存到云端</b>,换设备也能同步。首次使用请先注册。</div>'+
+   '<div class="fg"><div class="fl">邮箱</div><input class="in" id="cl-email" type="email" placeholder="you@example.com"></div>'+
+   '<div class="fg" style="margin-top:10px"><div class="fl">密码</div><input class="in" id="cl-pass" type="password" placeholder="至少 6 位"></div>'+
+   '<div style="display:flex;gap:10px;margin-top:16px">'+
+   '<button class="btn btn-p" style="flex:1" onclick="cloudDoLogin()">登录</button>'+
+   '<button class="btn btn-o" style="flex:1" onclick="cloudDoRegister()">注册</button>'+
+   '</div>'+
+   '<div id="cl-msg" style="font-size:12.5px;color:#a32d2d;margin-top:10px;min-height:16px"></div>'+
+   '<button class="btn btn-ghost btn-block" style="margin-top:8px" onclick="closeTop()">取消</button>');
+}
+async function cloudDoLogin(){
+  const em=$('#cl-email').value.trim(), pw=$('#cl-pass').value;
+  if(!em||!pw){$('#cl-msg').textContent='请输入邮箱和密码';return;}
+  $('#cl-msg').textContent='登录中...';$('#cl-msg').style.color='#3b6d11';
+  const r=await window.CLOUD.login(em,pw);
+  if(!r.ok){$('#cl-msg').style.color='#a32d2d';$('#cl-msg').textContent=r.error||'登录失败';return;}
+  await cloudAfterAuth();closeTop();toast('✅ 已登录云端');
+}
+async function cloudDoRegister(){
+  const em=$('#cl-email').value.trim(), pw=$('#cl-pass').value;
+  if(!em||!pw){$('#cl-msg').textContent='请输入邮箱和密码';return;}
+  if(pw.length<6){$('#cl-msg').textContent='密码至少 6 位';return;}
+  $('#cl-msg').textContent='注册中...';$('#cl-msg').style.color='#3b6d11';
+  const r=await window.CLOUD.register(em,pw);
+  if(!r.ok){$('#cl-msg').style.color='#a32d2d';$('#cl-msg').textContent=r.error||'注册失败';return;}
+  if(r.needConfirm){$('#cl-msg').style.color='#a32d2d';$('#cl-msg').textContent=r.msg;return;}
+  await cloudAfterAuth();closeTop();toast('✅ 注册并登录成功');
+}
+/* 认证成功后的共同处理: 载入云端该用户数据 */
+async function cloudAfterAuth(){
+  const uid=CLOUD_STATE.uid;
+  /* 云端是空的新用户 → 用空 DB; 已有数据 → 拉取 */
+  const r=await window.CLOUD.pullUserData(uid);
+  let db;
+  if(r.ok && r.db){ db=r.db; }
+  else { db={profile:{},trainings:[],matches:[],summaries:[],checkins:{},settings:{}}; }
+  /* 赋予 uuid 分区名: 用固定前缀 + 简短标识, 以便 readBox/writeBox 复用 */
+  const cloudKey='cloud_'+uid;
+  writeBox(cloudKey,db);
+  loginAs(cloudKey);
+  /* 记录云账号映射到本地 cur, 供下次自动恢复 */
+  try{ localStorage.setItem(KEY_CUR,cloudKey); }catch(e){}
+  renderCloudBadge();renderAll();
+}
+/* 已登录 → 显示账号信息 + 登出 */
+function openCloudLoggedIn(){
+  openSheet(sheetH('☁️ 云端账号')+
+   '<div class="hp-hero" style="align-items:flex-start"><div class="fi" style="background:#e6f1fb">👤</div>'+
+   '<div style="flex:1;min-width:0"><div class="fn">'+(CLOUD_STATE.email||'云用户')+'</div>'+
+   '<div class="fv" style="font-size:12.5px">已开启云端同步 · 数据存于 Supabase</div></div></div>'+
+   '<button class="btn btn-ghost btn-block" style="margin-top:14px" onclick="cloudCopyStats()">查看云端连接状态</button>'+
+   '<button class="btn btn-danger btn-block" style="margin-top:10px" onclick="cloudDoLogout()">退出云端账号</button>'+
+   '<button class="btn btn-o btn-block" style="margin-top:10px" onclick="closeTop()">关闭</button>');
+}
+async function cloudCopyStats(){
+  const st=await window.CLOUD.connect();
+  toast(st.ok?('云连接正常 · uid:'+st.uid.slice(0,8)):('云连接异常:'+(st.error||st.msg||'未知')));
+}
+async function cloudDoLogout(){
+  await window.CLOUD.logout();
+  /* 登出后回到本地默认演示账号 */
+  try{ localStorage.removeItem(KEY_CUR); }catch(e){}
+  loginAs('xiaoma');renderCloudBadge();renderAll();closeTop();toast('已退出云端');
+}
+window.openCloudAccount=openCloudAccount;window.cloudDoLogin=cloudDoLogin;window.cloudDoRegister=cloudDoRegister;window.cloudDoLogout=cloudDoLogout;window.cloudCopyStats=cloudCopyStats;
+
+/* ===== 云端数据同步(保存钩子) ===== */
+let _cloudSyncTimer=null,_cloudSyncing=false,_cloudPending=false;
+function cloudSyncAfterSave(){
+  if(!cloudAuthed()||!isCloudUser()||!DB)return;
+  if(_cloudSyncing){_cloudPending=true;return;}   // 同步中 → 标记待再同步
+  _cloudSyncing=true;
+  const uid=CLOUD_STATE.uid;
+  const c=CLOUD_STATE.client; if(!c){_cloudSyncing=false;return;}
+  (async()=>{
+    const tasks=[];
+    /* 训练 */
+    if(DB.trainings&&DB.trainings.length){
+      const rows=DB.trainings.map(t=>({id:t.id,owner_id:uid,date:t.date,type:t.type||null,duration:t.duration||null,intensity:t.intensity||null,feel:t.feel||null,note:t.note||null}));
+      tasks.push(c.from(CLOUD_TABLES.trainings).upsert(rows,{onConflict:'id'}).then(r=>r.error&&console.warn('[云]trainings',r.error.message)));
+    }
+    /* 比赛: 字段名映射 goalsN→goals_n assistsN→assists_n */
+    if(DB.matches&&DB.matches.length){
+      const rows=DB.matches.map(m=>({id:m.id,owner_id:uid,date:m.date,opp:m.opp||null,home:m.home??null,gf:m.gf??0,ga:m.ga??0,starts:m.starts??null,pos:m.pos||null,goals_n:m.goalsN??0,assists_n:m.assistsN??0,yellow:m.yellow??0,red:m.red??0,rating:m.rating??null,note:m.note||null}));
+      tasks.push(c.from(CLOUD_TABLES.matches).upsert(rows,{onConflict:'id'}).then(r=>r.error&&console.warn('[云]matches',r.error.message)));
+    }
+    /* 总结 */
+    if(DB.summaries&&DB.summaries.length){
+      const rows=DB.summaries.map(s=>({id:s.id,owner_id:uid,match_id:s.matchId||null,date:s.date,content:s.content||null,highlights:s.highlights||null,problems:s.problems||null,improvement:s.improvement||null}));
+      tasks.push(c.from(CLOUD_TABLES.summaries).upsert(rows,{onConflict:'id'}).then(r=>r.error&&console.warn('[云]summaries',r.error.message)));
+    }
+    /* 打卡: 本地对象 {date:kind} → 云端 upsert(date 唯一), 需先取已存在 */
+    if(DB.checkins&&Object.keys(DB.checkins).length){
+      const ckRows=Object.keys(DB.checkins).filter(k=>DB.checkins[k]).map(k=>({owner_id:uid,date:k,kind:DB.checkins[k]}));
+      // 唯一约束 (owner_id,date) → 用 upsert onConflict 需指定 columns
+      tasks.push(c.from(CLOUD_TABLES.checkins).upsert(ckRows,{onConflict:'owner_id,date'}).then(r=>r.error&&console.warn('[云]checkins',r.error.message)));
+    }
+    try{ await Promise.all(tasks); }catch(e){ console.warn('[云]sync',e); }
+    _cloudSyncing=false;
+    if(_cloudPending){_cloudPending=false;cloudSyncAfterSave();}  // 期间有新保存 → 再同步
+  })();
+}
+
 /* 若已启用云(CLOUD_ENABLED=true)且加载时即注入 SDK, 可在此自动 connect;
  * 默认关闭, 故不执行, 完全不影响现有本地版。 */
 if(CLOUD_ENABLED && cloudSdkLoaded()){ window.CLOUD.connect().then(r=>{ if(r.ok) console.log('[绿茵日志] 云接入就绪',r.uid); }); }
@@ -622,6 +837,11 @@ const verdictCn=m=>({win:'胜',draw:'平',lose:'负'})[verdict(m)];
 const verdictLabel={win:['胜','vw'],draw:['平','vd'],lose:['负','vl']};
 const intLab=i=>['低','较低','中','较高','极高'][Math.max(0,Math.min(4,(i||3)-1))];
 const CK={train:['训练','var(--pitch)','训练打卡'],match:['比赛','var(--win)','出场比赛'],rest:['休息','var(--draw)','休息调整'],inj:['伤病','#7a8b80','伤病休养']};
+/* ===== 云端用户 & id 工具 ===== */
+const isCloudUser=()=>!!(ME&&String(ME).indexOf('cloud_')===0);
+function genUUID(){ if(window.crypto&&crypto.randomUUID)return crypto.randomUUID(); let d=new Date().getTime(); return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){const r=(d+Math.random()*16)%16|0;d=Math.floor(d/16);return(c==='x'?r:(r&0x3|0x8)).toString(16);}); }
+/* 云端模式下生成兼容云端表主键(uuid)的 id; 本地演示仍用短串 */
+function genRecId(p){ return isCloudUser()?genUUID():(p+Date.now()); }
 let toastT;
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2000);}
 function closeMask(mask){if(!mask)return;mask.classList.remove('show');setTimeout(()=>mask.remove(),300);}
@@ -950,7 +1170,7 @@ function saveTraining(){
   const date=$('#tr-date').value;if(!date){toast('请选择日期');return;}
   const sgs=[...mask.querySelectorAll('.seg')];
   const rec={date,type:sgs[0].querySelector('button.on').textContent,duration:+$('#tr-dur').value||90,intensity:+sgs[1].querySelector('button.on').textContent,feel:sgs[2].querySelector('button.on').textContent,note:$('#tr-note').value.trim()};
-  if(editId){Object.assign(DB.trainings.find(x=>x.id===editId)||{},rec);}else{DB.trainings.push({id:'t'+Date.now(),...rec});}
+  if(editId){Object.assign(DB.trainings.find(x=>x.id===editId)||{},rec);}else{DB.trainings.push({id:genRecId('t'),...rec});}
   save();closeTop();editId=null;renderAll();toast('✅ 训练已保存');
 }
 
@@ -1009,7 +1229,7 @@ function saveMatch(){
   const starts=sgs[1].querySelector('button.on').textContent==='首发';
   const rating=[...mask.querySelectorAll('.star.on')].length;
   const rec={date:$('#ma-date').value,opp,home,gf:g1,ga:g2,starts,pos:$('#ma-pos').value,goalsN:+$('#ma-goal').value||0,assistsN:+$('#ma-assist').value||0,yellow:+$('#ma-y').value||0,red:+$('#ma-r').value||0,rating:rating||5,note:$('#ma-note').value.trim()};
-  if(editId){Object.assign(DB.matches.find(x=>x.id===editId)||{},rec);}else{DB.matches.push({id:'m'+Date.now(),...rec});}
+  if(editId){Object.assign(DB.matches.find(x=>x.id===editId)||{},rec);}else{DB.matches.push({id:genRecId('m'),...rec});}
   save();closeTop();editId=null;renderAll();toast('✅ 比赛已记录');
 }
 
@@ -1050,7 +1270,7 @@ function editSummary(id){editId=id;const s=DB.summaries.find(x=>x.id===id);if(!s
 function saveSummary(){
   const content=$('#su-content').value.trim();if(!content){toast('请填写评价');return;}
   const rec={matchId:$('#su-mid').value,date:today(),content,highlights:$('#su-hl').value.trim(),problems:$('#su-pb').value.trim(),improvement:$('#su-imp').value.trim()};
-  if(editId){Object.assign(DB.summaries.find(x=>x.id===editId)||{},rec);}else{DB.summaries.push({id:'s'+Date.now(),...rec});}
+  if(editId){Object.assign(DB.summaries.find(x=>x.id===editId)||{},rec);}else{DB.summaries.push({id:genRecId('s'),...rec});}
   save();closeTop();editId=null;renderAll();toast('✅ 总结已保存');
 }
 
@@ -1245,6 +1465,27 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTop();});
 let tickT;
 function tick(){const d=new Date();const t=$('#nowTime');if(t)t.textContent=pad(d.getHours())+':'+pad(d.getMinutes());}
 load();go('home');renderAll();tick();setInterval(tick,1000);
+/* 云端入口状态 + 自动恢复云会话 */
+renderCloudBadge();
+if(CLOUD_ENABLED&&cloudSdkLoaded()){
+  window.CLOUD.connect().then(async st=>{
+    if(st.ok&&st.authed&&st.uid){
+      const key='cloud_'+st.uid;
+      /* 若当前已是该云用户则无需切换; 否则切过去并确保本地分区存在 */
+      if(ME!==key){
+        if(readBox(key)==null){
+          const r=await window.CLOUD.pullUserData(st.uid);
+          const db=(r.ok&&r.db)?r.db:{profile:{},trainings:[],matches:[],summaries:[],checkins:{},settings:{}};
+          writeBox(key,db);
+        }
+        loginAs(key);renderAll();
+      }
+      toast('已恢复云端登录');renderCloudBadge();
+    }else{
+      renderCloudBadge();
+    }
+  });
+}
 </script>
 </body>
 </html>
