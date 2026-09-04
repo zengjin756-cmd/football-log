@@ -39,10 +39,10 @@ body{background:#d9e3da;min-height:100dvh;display:flex;align-items:center;justif
 
 /* ===== 手机外壳 ===== */
 .phone{width:100%;height:100dvh;height:100vh;background:var(--bg);position:relative;overflow:hidden;flex-shrink:0;display:flex;flex-direction:column;
-  max-width:480px;box-shadow:none;}
+  max-width:480px;box-shadow:none;min-height:0;}
 @media(min-width:1041px){body{padding:20px;}.phone{border-radius:34px;box-shadow:0 0 0 10px #0f1411,0 30px 70px rgba(0,0,0,.45);height:min(900px,calc(100dvh - 40px));}}
 /* 顶部安全区：让内容躲开真实手机状态栏/刘海 */
-.screen{flex:1;overflow-y:auto;overflow-x:hidden;padding-top:env(safe-area-inset-top);padding-bottom:calc(var(--tabh) + env(safe-area-inset-bottom) + 20px);scrollbar-width:none;}
+.screen{flex:1;overflow-y:auto;overflow-x:hidden;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);scrollbar-width:none;}
 .screen::-webkit-scrollbar{display:none;}
 .hidden{display:none!important;}
 
@@ -72,8 +72,8 @@ body{background:#d9e3da;min-height:100dvh;display:flex;align-items:center;justif
 .empty .ei{font-size:46px;margin-bottom:10px;opacity:.7;}
 .empty p{font-size:13.5px;line-height:1.9;}
 
-/* ===== 底部导航(5个) ===== */
-.tabbar{position:absolute;bottom:0;left:0;right:0;height:calc(var(--tabh) + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);backdrop-filter:blur(14px);display:flex;border-top:1px solid var(--line);z-index:60;padding-bottom:calc(2px + env(safe-area-inset-bottom));}
+/* ===== 底部导航(5个): 固定 flex 底栏, 始终显示 ===== */
+.tabbar{position:relative;bottom:auto;left:auto;right:auto;height:calc(var(--tabh) + env(safe-area-inset-bottom));flex-shrink:0;background:rgba(255,255,255,.97);backdrop-filter:blur(14px);display:flex;border-top:1px solid var(--line);z-index:60;padding-bottom:calc(env(safe-area-inset-bottom));}
 .tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#a2aea6;cursor:pointer;font-size:10px;font-weight:700;position:relative;padding-bottom:calc(env(safe-area-inset-bottom)/2);}
 .tab .ti{font-size:21px;line-height:1;transition:transform .15s;}
 .tab.active{color:var(--pitch);}
@@ -171,6 +171,17 @@ body{background:#d9e3da;min-height:100dvh;display:flex;align-items:center;justif
 .cal-legend span{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mut);}
 .cal-legend i{width:7px;height:7px;border-radius:50%;display:inline-block;}
 .legend-train{background:var(--pitch);}.legend-match{background:var(--win);}.legend-rest{background:var(--draw);}.legend-inj{background:#7a8b80;}
+
+/* 打卡明细列表(按日期) */
+.ckl-item{display:flex;align-items:flex-start;gap:11px;padding:10px 4px;}
+.ckl-item+.ckl-item{border-top:1px dashed var(--line);}
+.ckl-ic{width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.ckl-main{flex:1;min-width:0;}
+.ckl-top{display:flex;align-items:center;gap:8px;}
+.ckl-date{font-size:13px;font-weight:800;color:var(--ink);}
+.ckl-k{font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:9px;}
+.ckl-c{font-size:12.5px;color:var(--ink-2);margin-top:3px;line-height:1.5;}
+.ckl-empty{text-align:center;color:var(--mut);font-size:12.5px;padding:22px 0 6px;}
 
 /* 今日打卡行 */
 .checkin-row{display:flex;gap:8px;padding:4px 0 6px;}
@@ -1387,12 +1398,40 @@ function renderCal(){
     cells+=`<div class="cal-day ${isT?'today':''} ${ck?'':''}" data-d="${d}" data-ck="${ck||''}" onclick="dayTap('${iso}')">${d}${ck?`<span class="mk ${ck}"></span>`:''}</div>`;}
   const after=7-(lead+dim)%7;if((lead+dim)%7)for(let i=1;i<=after;i++)cells+=`<div class="cal-day other"></div>`;
   const stats=`<div class="stat-line"><span>训练 <b>${Object.values(DB.checkins).filter(v=>v==='train').length}</b></span><span>比赛 <b>${Object.values(DB.checkins).filter(v=>v==='match').length}</b></span><span>休息 <b>${Object.values(DB.checkins).filter(v=>v==='rest').length}</b></span><span>伤病 <b>${Object.values(DB.checkins).filter(v=>v==='inj').length}</b></span></div>`;
+  /* —— 打卡明细列表：按日期从近到远列出每次打卡及其当天内容 —— */
+  const ckMeta={train:['🏃','训练','var(--pitch)','#e9f6ee'],match:['⚽','比赛','var(--win)','#fdecec'],rest:['🛌','休息','var(--draw)','#fdf3e0'],inj:['🤕','伤病','#7a8b80','#e8eeeb']};
+  const ckDates=Object.keys(DB.checkins).filter(k=>DB.checkins[k]).sort((a,b)=>b.localeCompare(a));
+  let ckList;
+  if(!ckDates.length){
+    ckList=`<div class="ckl-empty">还没有打过卡，去首页点「今日打卡」开始吧</div>`;
+  }else{
+    ckList=ckDates.map(iso=>{
+      const kind=DB.checkins[iso],meta=ckMeta[kind]||ckMeta.train;
+      let content='';
+      if(kind==='match'){const ms=DB.matches.filter(m=>m.date===iso);
+        content=ms.length?ms.map(m=>{const vc={'win':'var(--win)','draw':'var(--draw)','lose':'var(--lose)'}[verdict(m)];
+          return `vs ${esc(m.opp||'对手')} <b style="color:${vc}">${m.gf}:${m.ga}</b> ${verdictCn(m)}${m.goalsN?' · 进'+m.goalsN+'球':''}`;}).join('　'):'出场比赛';}
+      else if(kind==='train'){const ts=DB.trainings.filter(t=>t.date===iso);
+        content=ts.length?ts.map(t=>`${esc(t.type||'')}训练 · ${t.duration||0}分钟`).join('　'):'训练打卡';}
+      else content=meta[1];
+      return `<div class="ckl-item">
+        <div class="ckl-ic" style="background:${meta[3]}">${meta[0]}</div>
+        <div class="ckl-main">
+          <div class="ckl-top"><span class="ckl-date">${fmtDF(iso)}</span>
+          <span class="ckl-k" style="background:${meta[3]};color:${meta[2]}">${meta[1]}</span></div>
+          <div class="ckl-c">${content}</div>
+        </div></div>`;}).join('');
+  }
   return `<div class="sec-t">📅 出勤打卡日历</div>
   <div class="pad" style="padding-top:2px"><div class="card" style="padding:16px 14px">
     <div class="cal-h"><div class="cal-nav"><button onclick="calNav(-1)">‹</button><button onclick="calNav(0)">•</button></div><div class="cal-title">${calY}年${calM+1}月</div><div class="cal-nav"><button onclick="calNav(1)">›</button></div></div>
     <div class="cal-w">${cells}</div>
     <div class="cal-legend"><span><i class="legend-train"></i>训练</span><span><i class="legend-match"></i>比赛</span><span><i class="legend-rest"></i>休息</span><span><i class="legend-inj"></i>伤病</span></div>
     ${stats}
+  </div></div>
+  <div class="sec-t">📋 打卡明细<span class="more">共 ${ckDates.length} 次 · 最近优先</span></div>
+  <div class="pad" style="padding-top:2px;padding-bottom:8px"><div class="card" style="padding:6px 14px">
+    ${ckList}
   </div></div>`;
 }
 function calNav(d){if(d===0){const n=new Date();calY=n.getFullYear();calM=n.getMonth();}else{calM+=d;if(calM<0){calM=11;calY--;}if(calM>11){calM=0;calY++;}}renderStats();$('#screen').scrollTop=300;}
