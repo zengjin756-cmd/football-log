@@ -545,6 +545,66 @@ function loadRels(){ try{const r=localStorage.getItem(KEY_RELS);RELS=r?JSON.pars
 function persistRels(){ try{localStorage.setItem(KEY_RELS,JSON.stringify(RELS));}catch(e){} }
 
 
+/* ================= 云接入准备层(可选, 默认关闭) =================
+ * 目的: 为将来接入 Supabase 预留"接缝", 不影响当前本地版任何功能。
+ * 现状: CLOUD_ENABLED 恒为 false, 以下代码不会改变任何现有读写/渲染行为。
+ * 待接云时: 填入 supabaseUrl + supabaseAnonKey, 把 CLOUD_ENABLED 置 true,
+ *          并按 supabase/schema.sql 建表(见 football-log 根目录)。
+ * 接入原则: 业务层所有数据仍走 readBox/writeBox/persistRels/loginAs,
+ *          仅需把这些函数内部改成"云端优先、本地兜底"即可, 调用方零改动。
+ * ================================================================ */
+const CLOUD_ENABLED=false;                 // ← 接入云端时改为 true
+const CLOUD_DEMO_MODE=false;               // 云端演示账号模式(接入后可置 true 体验真登录)
+const CLOUD_CONFIG={
+  supabaseUrl:null,                        // 例 'https://xxxx.supabase.co'
+  supabaseAnonKey:null,                    // anon/public key(前端安全)
+  projectRef:null,                         // supabase 项目标识(可留空)
+};
+/* Supabase 建表约定(与 football-log/supabase/schema.sql 一一对应) */
+const CLOUD_TABLES={
+  profiles:'profiles',        /* { id(uuid=uid), name,pos,posDetail,foot,height,weight,team,number,color, created_at } */
+  trainings:'trainings',      /* { id, owner_id, date,type,duration,intensity,feel,note, created_at } */
+  matches:'matches',          /* { id, owner_id, date,opp,home,gf,ga,starts,pos,goalsN,assistsN,yellow,red,rating,note, created_at } */
+  summaries:'summaries',      /* { id, owner_id, date, content,highlights,problems,improvement, created_at } */
+  checkins:'checkins',        /* { id, owner_id, date, kind('train'|'match'|'rest'|'inj') } —— 用 {date,kind} 唯一行替代本地对象 */
+  friendships:'friendships',  /* { a, b, status('friend'|'pending'), at, lastPlayed } —— 对应本地 KEY_RELS */
+};
+/* 云就绪状态(接入后由 initCloud 填充) */
+const CLOUD_STATE={ client:null, authed:false, uid:null, error:null };
+
+/* 云能力探测: 当前是否已注入 supabase SDK?(supabase-js 通过 <script> 或 import) */
+function cloudSdkLoaded(){ return typeof supabase!=='undefined' || typeof window.supabase!=='undefined'; }
+
+/* 暴露给全局/控制台的云操作入口(仅接入后有效, 现在调用会给出友好提示) */
+window.CLOUD={
+  enabled:()=>CLOUD_ENABLED,
+  config:CLOUD_CONFIG,
+  status:()=>({enabled:CLOUD_ENABLED,sdk:cloudSdkLoaded(),...CLOUD_STATE}),
+  /* 接入后调用: 用 URL+anonKey 创建客户端并验证连通(见 schema.sql 建表) */
+  connect:async function(cfg){
+    if(!cloudSdkLoaded()){ return {ok:false,msg:'supabase-js 未加载。接入时需在 HTML 头部引入 @supabase/supabase-js(见接入文档)'}; }
+    try{
+      if(cfg){ if(cfg.supabaseUrl)CLOUD_CONFIG.supabaseUrl=cfg.supabaseUrl; if(cfg.supabaseAnonKey)CLOUD_CONFIG.supabaseAnonKey=cfg.supabaseAnonKey; }
+      CLOUD_STATE.client=window.supabase.createClient(CLOUD_CONFIG.supabaseUrl,CLOUD_CONFIG.supabaseAnonKey);
+      const {data,error}=await CLOUD_STATE.client.auth.getSession();
+      CLOUD_STATE.authed=!!data?.session; CLOUD_STATE.uid=data?.session?.user?.id||null;
+      CLOUD_STATE.error=error?error.message:null;
+      return {ok:true,...CLOUD_STATE};
+    }catch(e){ CLOUD_STATE.error=e.message; return {ok:false,error:e.message}; }
+  },
+  /* 注册/登录占位 —— 接入后接 supabase.auth.signUp/signInWithPassword */
+  register:async function(email,pass){ if(!CLOUD_STATE.client)return{ok:false,msg:'先 connect()'}; const {data,error}=await CLOUD_STATE.client.auth.signUp({email,password:pass}); return error?{ok:false,error:error.message}:{ok:true,user:data.user}; },
+  login:async function(email,pass){ if(!CLOUD_STATE.client)return{ok:false,msg:'先 connect()'}; const {data,error}=await CLOUD_STATE.client.auth.signInWithPassword({email,password:pass}); CLOUD_STATE.authed=!error;CLOUD_STATE.uid=data?.user?.id||null; return error?{ok:false,error:error.message}:{ok:true,uid:data.user.id}; },
+  logout:async function(){ if(CLOUD_STATE.client){await CLOUD_STATE.client.auth.signOut();} CLOUD_STATE.authed=false;CLOUD_STATE.uid=null; },
+  /* 接入后数据同步占位: 需把 syncToCloud/pullFromCloud 实现为 readBox 的云端对应(见 schema) */
+  syncUp:async function(){ return {ok:false,msg:'尚未接入云端数据同步(见上云方案评估.md P1)'}; },
+  pullDown:async function(){ return {ok:false,msg:'尚未接入云端数据同步(见上云方案评估.md P1)'}; },
+};
+/* 若已启用云(CLOUD_ENABLED=true)且加载时即注入 SDK, 可在此自动 connect;
+ * 默认关闭, 故不执行, 完全不影响现有本地版。 */
+if(CLOUD_ENABLED && cloudSdkLoaded()){ window.CLOUD.connect().then(r=>{ if(r.ok) console.log('[绿茵日志] 云接入就绪',r.uid); }); }
+
+
 /* ============ 工具 ============ */
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
