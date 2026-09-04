@@ -4,6 +4,9 @@
 *.jpeg
 *.gif
 
+# PWA App图标(放行)
+!icons/*.png
+
 # 系统文件
 Thumbs.db
 .DS_Store
